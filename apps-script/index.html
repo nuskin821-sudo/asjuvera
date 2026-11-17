@@ -297,6 +297,7 @@ function alertOf(c){
     const l=c.tin[c.tin.length-1];
     if(l&&(l.k==='picked'||l.k==='move')){const b=c.staleAck&&c.staleAck>l.t?c.staleAck:l.t; if((NOW()-pd(b))/36e5>=48) return {type:'stale',x:sh(l.t)+' '+l.x+' 뒤 48시간 넘게 이동 기록 없음'}}
     if(l&&l.k==='book'&&days(l.t)>=3) return {type:'nopick',x:sh(l.t)+' 수거 접수 뒤 '+days(l.t)+'일째 수거 기록 없음'};
+    if(!l&&c.method!=='고객발송'&&days(c.recv)>=3) return {type:'nopick',x:'접수 뒤 '+days(c.recv)+'일째 수거 기록 없음'};
   }
   if(c.stage==='pay'&&c.payAsk){const b=c.payRemind&&c.payRemind>c.payAsk?c.payRemind:c.payAsk; if(days(b)>=3) return {type:'overdue',x:md(c.payAsk)+' 비용 안내 뒤 '+days(c.payAsk)+'일째 입금 없음'}}
   return null;
@@ -311,6 +312,7 @@ function pickupInfo(c){
   if(p){const d=gap(c.recv,p.t);return {done:1,d,t:p.t,txt:d<=0?'접수 당일 수거':'접수 '+d+'일 만에 수거'}}
   if(c.method==='고객발송') return {txt:'고객 직접 발송'};
   if(ST[c.stage].end) return null;
+  if(ST[c.stage].step>=3) return {txt:'수거 일시 기록 없음'};
   const d=days(c.recv);return {done:0,d,late:d>=3,txt:d<=0?'오늘 접수 · 수거 전':'접수 '+d+'일째 · 수거 전'};
 }
 const pkPill=c=>{const p=pickupInfo(c);return p?`<span class="pk ${p.late?'late':''}">${p.txt}</span>`:''};
@@ -325,11 +327,13 @@ const GSTEPS=['고객 보관','수거 완료','이동 중','창고','출고·배
 function goods(c){ // 물건이 지금 어디에 어떤 상태로 있는지
   const o=c.tout[c.tout.length-1], i=c.tin[c.tin.length-1], a=alertOf(c);
   if(o) return o.k==='arrived'?{s:5,txt:'고객 수령 완료',loc:o.loc,t:o.t,cls:'ok'}:{s:4,txt:'고객에게 배송 중 · '+o.x,loc:o.loc,t:o.t};
+  const m={inspect:'창고 · 개봉·검사 기다림',notify:'창고 보관 · 고객 안내 기다림',pay:'창고 보관 · 입금 기다림',ship:'창고 · 출고 준비'};
+  if(!i&&m[c.stage]) return {s:3,txt:m[c.stage],loc:'',t:''};
+  if(!i&&c.stage==='done') return {s:4,txt:'출고됨',loc:'',t:''};
   if(!i) return {s:0,txt:c.method==='고객발송'?'고객이 직접 발송 중 (송장 미확인)':'고객 보관 · 수거 접수 전',loc:'',t:''};
   if(i.k==='fail') return {s:0,txt:'고객 보관 · 수거 실패',loc:i.loc,t:i.t,cls:'bad'};
   if(i.k==='book') return {s:0,txt:'고객 보관 · 수거 기다림',loc:i.loc,t:i.t,cls:a&&a.type==='nopick'?'bad':''};
   if(i.k!=='arrived'){const st=a&&a.type==='stale';return {s:i.k==='picked'?1:2,txt:'창고로 오는 중 · '+i.x+(st?' 뒤 멈춤':''),loc:i.loc,t:i.t,cls:st?'bad':''}}
-  const m={inspect:'창고 · 개봉·검사 기다림',notify:'창고 보관 · 고객 안내 기다림',pay:'창고 보관 · 입금 기다림',ship:'창고 · 출고 준비'};
   return {s:3,txt:m[c.stage]||'창고 보관',loc:i.loc,t:i.t};
 }
 const goodsPill=c=>{const g=goods(c);return `<span class="trk ${g.cls||''}">물건: ${esc(g.txt)}${g.loc?' · '+esc(g.loc):''}</span>`};
@@ -410,7 +414,7 @@ function renderStrip(){
 function renderList(){
   const v=visible();
   $('list').innerHTML=v.length?v.map(c=>{const t=task(c);const oc=t.own==='상담'?'c':t.own==='창고'?'w':t.own==='자동'?'a':'';
-    const u=dueInfo(c), why=t.alert?t.alert.x:(u&&u.left<=0?u.txt:'');
+    const u=dueInfo(c), why=t.alert?t.alert.x:(u&&u.left<=0?u.txt:(c.sheetNote||''));
     return `<div class="row ${t.red?'urgent':''} ${sel===c.id?'sel':''}" role="button" tabindex="0" data-id="${esc(c.id)}">
       <span class="path"><span class="todo">${esc(t.todo)}</span></span>
       <span class="who ${oc}">${esc(disp(t.own))}</span>
@@ -502,6 +506,7 @@ function infoPane(c){
     <dt>회수 방법</dt><dd>${c.method==='고객발송'?'고객 직접 발송(선불)':'롯데택배 수거'}${c.inTrack?' · 송장 '+esc(c.inTrack):''}</dd>
     <dt>검사 결과</dt><dd>${c.inspect?esc(c.inspect):'아직 없음'}</dd>
     <dt>출고</dt><dd>${c.outTrack?'송장 '+esc(c.outTrack):'아직 없음'}</dd>
+    ${c.sheetTab?`<dt>시트 위치</dt><dd>[${esc(c.sheetTab)}] 탭${c.sheetProg?' · 진행사항: '+esc(c.sheetProg):''}${c.sheetMemo?' · 비고: '+esc(c.sheetMemo):''}</dd>`:''}
   </dl><div class="acts" style="margin-top:10px"><button class="btn ghost" data-a="editInfo">접수 자료 수정</button></div></div>`;
 }
 function renderDetail(){
@@ -524,7 +529,7 @@ function act(a,btn){
   switch(a){
    case 'toPickup': c.stage='pickup';c.method='수거';log(c,'판정 확인: '+w.label+' · 수거로 진행');break;
    case 'selfShip': c.stage='transit';c.method='고객발송';log(c,'판정 확인: '+w.label+' · 고객 직접 발송 안내');break;
-   case 'block': c.stage='closed';log(c,'유상 AS 접수 불가 안내 후 종결');break;
+   case 'block': c.stage='closed';c.closeWhy='문자 유상AS 안됨 안내';log(c,'유상 AS 접수 불가 안내 후 종결');break;
    case 'pickupDone': if(!val('f-in')) return toast('회수 송장번호를 넣어 주세요'); c.inTrack=val('f-in');c.stage='transit';c.tin=[{t:ts(),k:'book',x:'수거 예약',loc:''}];log(c,'수거 접수 · 회수 송장 '+c.inTrack+' · 수거 안내 문자');break;
    case 'markPicked': c.tin.push({t:ts(),k:'picked',x:'수거 완료',loc:''});log(c,'수거 완료 확인');break;
    case 'markFail': c.tin.push({t:ts(),k:'fail',x:'수거 실패',loc:''});c.alert={type:'fail',x:sh(ts())+' 수거 실패로 표시됨'};log(c,'수거 실패 표시');break;
@@ -535,7 +540,7 @@ function act(a,btn){
      else if(al.type==='overdue'){c.payRemind=iso(NOW());log(c,'입금 재안내 문자 보냄')}
      break;
    case 'inspectDone': {const s=val('f-sym');c.inspect=s;c.inspAt=ts();c.plan=s==='정상작동'?'normal':w.k==='free'?'free':'paid';c.stage='notify';log(c,'검사: '+s+(val('f-note')?' · '+val('f-note'):''));break}
-   case 'notifyDone': if(c.plan==='paid'){c.stage='pay';c.payAsk=iso(NOW());log(c,'비용 '+won(w.fee)+' 안내 완료')}else{c.stage='ship';log(c,(c.plan==='normal'?'정상작동 재발송':'무상 교환')+' 안내 완료')}break;
+   case 'notifyDone': if(c.plan==='paid'){c.stage='pay';c.fee=w.fee;c.payAsk=iso(NOW());log(c,'비용 '+won(w.fee)+' 안내 완료')}else{c.stage='ship';log(c,(c.plan==='normal'?'정상작동 재발송':'무상 교환')+' 안내 완료')}break;
    case 'paid': c.stage='ship';log(c,'입금 확인 '+won(w.fee));break;
    case 'nopay': c.plan='return';c.stage='ship';log(c,'유상 진행 안 함 → 착불 반송');break;
    case 'shipDone': if(!val('f-out')) return toast('출고 송장번호를 넣어 주세요'); c.outTrack=val('f-out');c.stage='done';c.tout=[{t:ts(),k:'book',x:'출고 접수',loc:'시흥 배곧'}];log(c,'출고 완료 · 송장 '+c.outTrack+' · 출고 안내 문자');break;
