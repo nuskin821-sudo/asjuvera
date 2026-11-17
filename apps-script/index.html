@@ -1,0 +1,735 @@
+<title>쥬베라 AS 업무판</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+/* 배치: 맨 위=큰 분류(일반 AS / 현대홈쇼핑), 그 아래 화면 탭, 왼쪽=접수 건 카드(단계·막힌 곳·최근 이력), 오른쪽=선택한 건의 탭 */
+:root{
+  --bg:#f3f5f8; --panel:#ffffff; --ink:#18212f; --sub:#5b6778; --line:#d9dfe8; --soft:#eaeef4;
+  --accent:#1f4fd8; --accent-ink:#ffffff; --accent-soft:#e4ebfd;
+  --red:#c5221f; --red-soft:#fde9e7; --amber:#8a5a00; --amber-soft:#fdf1d3; --green:#1a7a45; --green-soft:#dff3e7;
+  --font:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11151c; --panel:#1a202a; --ink:#e8ecf2; --sub:#9aa6b8; --line:#2f3847; --soft:#232b38;
+  --accent:#7ea2ff; --accent-ink:#0d1422; --accent-soft:#1f2c4d;
+  --red:#ff8a80; --red-soft:#47201e; --amber:#f2c261; --amber-soft:#3d3015; --green:#6fd39a; --green-soft:#173524; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11151c; --panel:#1a202a; --ink:#e8ecf2; --sub:#9aa6b8; --line:#2f3847; --soft:#232b38;
+  --accent:#7ea2ff; --accent-ink:#0d1422; --accent-soft:#1f2c4d;
+  --red:#ff8a80; --red-soft:#47201e; --amber:#f2c261; --amber-soft:#3d3015; --green:#6fd39a; --green-soft:#173524; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 60px}
+.wrap{max-width:1280px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1{font-size:20px;margin:0;font-weight:700}
+h2{font-size:17px;margin:0 0 8px;font-weight:700;text-wrap:balance}
+h3{font-size:14px;margin:0 0 6px;font-weight:700;color:var(--sub)}
+.top{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between}
+.proto{font-size:12.5px;color:var(--amber);background:var(--amber-soft);padding:3px 9px;border-radius:4px;font-weight:600}
+.proto.live{color:var(--green);background:var(--green-soft)}
+.tabs{display:flex;gap:4px;flex-wrap:wrap}
+.tabs button{border:1px solid var(--line);background:var(--panel);padding:8px 14px;border-radius:6px;font-weight:600}
+.tabs button[aria-selected="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.me{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--sub)}
+select,input[type=text],input[type=date],textarea{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:7px 9px;min-width:0}
+textarea{width:100%;resize:vertical}
+
+.cats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.cats button{border:2px solid var(--line);background:var(--panel);border-radius:10px;padding:16px 18px;text-align:left;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
+.cats button b{font-size:30px;line-height:1.25;font-weight:700}
+.cats button span{font-size:15px;color:var(--sub);font-weight:600}
+.cats button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.cats button[aria-pressed="true"] span{color:var(--accent-ink)}
+@media (max-width:560px){.cats button{padding:12px}.cats button b{font-size:22px}}
+
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:8px}
+.strip button{text-align:left;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:9px 11px;display:flex;flex-direction:column;gap:1px}
+.strip button b{font-size:22px;font-variant-numeric:tabular-nums;line-height:1.2}
+.strip button span{font-size:13px;color:var(--sub);font-weight:500}
+.strip button em{font-style:normal;font-size:11.5px;color:var(--sub)}
+.strip button.hot b{color:var(--red)}
+.strip button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.bar input[type=text]{flex:1 1 220px}
+.seg{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{border:0;background:var(--panel);padding:7px 12px;font-size:14px;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);font-weight:600}
+
+.work{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,470px);gap:14px;align-items:start}
+.list{display:flex;flex-direction:column;gap:8px;min-width:0}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;text-align:left;width:100%;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:11px 12px;cursor:pointer}
+.row.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.row.urgent{border-color:var(--red)}
+.row>.full{grid-column:1/-1;min-width:0}
+.path{display:flex;flex-wrap:wrap;gap:2px 6px;align-items:center;font-size:14px;min-width:0}
+.path i{font-style:normal;color:var(--sub)}
+.path .todo{font-weight:700;font-size:15px}
+.row.urgent .todo{color:var(--red)}
+.when{font-weight:700;font-variant-numeric:tabular-nums}
+.who{font-size:12.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--soft);white-space:nowrap;align-self:center}
+.who.c{background:var(--accent-soft);color:var(--accent)}
+.who.w{background:var(--green-soft);color:var(--green)}
+.who.a{background:var(--amber-soft);color:var(--amber)}
+.meta{font-size:13.5px;color:var(--sub);overflow-wrap:anywhere}
+.meta b{color:var(--ink);font-weight:600}
+.pills{display:flex;flex-wrap:wrap;gap:4px}
+.last{font-size:13px;color:var(--sub);border-top:1px dashed var(--line);padding-top:6px;overflow-wrap:anywhere}
+.last b{color:var(--ink);font-weight:500}
+.empty{padding:28px;text-align:center;color:var(--sub);border:1px dashed var(--line);border-radius:8px}
+.trk,.pk{display:inline-block;font-size:12px;font-weight:700;padding:1px 7px;border-radius:4px}
+.trk{background:var(--accent-soft);color:var(--accent)}
+.trk.bad{background:var(--red);color:var(--panel)}
+.trk.ok{background:var(--green-soft);color:var(--green)}
+.pk{background:var(--soft);color:var(--ink)}
+.pk.late{background:var(--amber-soft);color:var(--amber)}
+/* 단계 띠: 지나간 단계=초록, 지금 단계=파랑, 막힌 단계=빨강 */
+.steps{display:flex;gap:3px;flex-wrap:wrap;font-size:12px}
+.steps span{padding:4px 7px;border-radius:4px;background:var(--soft);color:var(--sub)}
+.steps span.past{background:var(--green-soft);color:var(--green)}
+.steps span.on{background:var(--accent);color:var(--accent-ink);font-weight:700}
+.steps span.stuck{background:var(--red);color:var(--panel);font-weight:700}
+.steps span.waitc{background:var(--amber-soft);color:var(--amber);font-weight:700}
+
+.detail{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:14px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 10px);max-height:calc(100vh - 20px);overflow:auto;min-width:0}
+.dhead{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.dhead small{color:var(--sub);font-variant-numeric:tabular-nums}
+.close{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:4px 10px}
+.dtabs{display:flex;flex-wrap:wrap;gap:4px;border-bottom:2px solid var(--line);padding-bottom:6px}
+.dtabs button{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:7px 11px;font-weight:600;font-size:14px}
+.dtabs button[aria-selected="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.dpane{display:flex;flex-direction:column;gap:14px}
+.next{border-radius:8px;padding:12px;background:var(--accent-soft);display:flex;flex-direction:column;gap:9px}
+.next.urgent{background:var(--red-soft)}
+.next .lab{font-size:12.5px;color:var(--sub);font-weight:600}
+.next .big{font-size:18px;font-weight:700}
+.next p{margin:0;font-size:14px}
+.acts{display:flex;flex-wrap:wrap;gap:6px}
+.btn{border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);border-radius:6px;padding:8px 13px;font-weight:600}
+.btn.ghost{background:var(--panel);color:var(--ink);border-color:var(--line);font-weight:500}
+.btn.sm{padding:3px 9px;font-size:12.5px}
+.field{display:flex;flex-direction:column;gap:3px;font-size:13px;color:var(--sub)}
+.field input,.field select{width:100%}
+dl{display:grid;grid-template-columns:92px minmax(0,1fr);gap:5px 10px;margin:0;font-size:14px}
+dt{color:var(--sub)}dd{margin:0;overflow-wrap:anywhere}
+.tag{font-size:12px;font-weight:700;padding:1px 7px;border-radius:4px}
+.tag.free{background:var(--green-soft);color:var(--green)}
+.tag.paid{background:var(--amber-soft);color:var(--amber)}
+.tag.no{background:var(--red-soft);color:var(--red)}
+.msg{white-space:pre-wrap;background:var(--soft);border-radius:6px;padding:10px;font-size:13.5px;margin:0;font-family:var(--font)}
+.hist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.hist li{font-size:13.5px;border-left:2px solid var(--line);padding-left:9px;display:flex;flex-direction:column;gap:3px}
+.hist small{color:var(--sub);font-variant-numeric:tabular-nums}
+.hist .hrow{display:flex;gap:8px;align-items:flex-start;justify-content:space-between}
+.hist .hrow span{overflow-wrap:anywhere;min-width:0}
+.memo{display:flex;gap:6px}.memo input{flex:1}
+.live{border:1px solid var(--line);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.live .lab{font-size:12.5px;color:var(--sub);font-weight:600}
+.live .big{font-size:17px;font-weight:700}
+.live.bad .big{color:var(--red)}
+.live p{margin:0;font-size:13.5px;color:var(--sub)}
+.live p b{color:var(--ink)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);margin-right:5px}
+.gsteps,.tsteps{display:grid;gap:3px;font-size:12px;text-align:center}
+.gsteps{grid-template-columns:repeat(6,minmax(0,1fr))}
+.tsteps{grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:8px}
+.gsteps span,.tsteps span{padding:5px 2px;border-radius:4px;background:var(--soft);color:var(--sub)}
+.gsteps span.past,.tsteps span.past{background:var(--green-soft);color:var(--green)}
+.gsteps span.on,.tsteps span.on{background:var(--accent);color:var(--accent-ink);font-weight:700}
+.gsteps span.bad,.tsteps span.bad{background:var(--red);color:var(--panel);font-weight:700}
+@media (max-width:480px){.gsteps{grid-template-columns:repeat(3,minmax(0,1fr))}}
+a{color:var(--accent)}
+.go{border:0;background:none;color:var(--accent);font-weight:600;padding:0;text-decoration:underline}
+
+.doc{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px;display:flex;flex-direction:column;gap:22px}
+.doc p,.doc li{max-width:68ch}
+.doc p{margin:0 0 6px}.doc ul,.doc ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:left;vertical-align:top}
+th{color:var(--sub);font-size:12.5px;white-space:nowrap}
+td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.card{border:1px solid var(--line);border-radius:8px;padding:12px}
+.kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
+.kpi div{border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.kpi b{display:block;font-size:24px;font-variant-numeric:tabular-nums}
+.kpi span{font-size:13px;color:var(--sub)}
+.st{font-weight:700}.st.off{color:var(--red)}.st.plan{color:var(--amber)}
+.formgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:8px;font-weight:600;z-index:30;max-width:calc(100% - 32px)}
+@media (max-width:900px){
+  .work{grid-template-columns:minmax(0,1fr)}
+  .detail{position:fixed;inset:0;z-index:20;border-radius:0;max-height:none;
+    padding-top:calc(env(safe-area-inset-top,0px) + 14px);padding-bottom:calc(env(safe-area-inset-bottom,0px) + 20px);
+    padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+}
+</style>
+
+<div class="wrap">
+  <div class="top">
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <h1>쥬베라 AS 업무판</h1><span class="proto" id="badge">설계 초안 · 예시 자료 · 저장되지 않음</span>
+    </div>
+    <label class="me" id="meBox">지금 쓰는 사람
+      <select id="me"><option value="상담">김은진 (상담)</option><option value="창고">최미영 실장 (창고)</option><option value="대표">대표</option></select>
+    </label>
+    <span class="me" id="meLive" hidden></span>
+  </div>
+  <div class="cats" id="catSeg"></div>
+  <div class="tabs" role="tablist" id="tabs">
+    <button role="tab" data-v="todo" aria-selected="true">할 일</button>
+    <button role="tab" data-v="trk" aria-selected="false">송장 추적</button>
+    <button role="tab" data-v="new" aria-selected="false">새 접수</button>
+    <button role="tab" data-v="boss" aria-selected="false">총괄</button>
+    <button role="tab" data-v="plan" aria-selected="false">설계 설명</button>
+  </div>
+
+  <section id="v-todo">
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="strip" id="strip"></div>
+      <div class="bar">
+        <div class="seg" id="ownerSeg">
+          <button data-o="all" aria-pressed="true">전체 담당</button><button data-o="상담" aria-pressed="false">김은진(상담)</button><button data-o="창고" aria-pressed="false">최미영 실장(창고)</button>
+        </div>
+        <input type="text" id="q" placeholder="이름·연락처 뒷자리·접수번호·송장번호 검색 (완료 건 포함)">
+      </div>
+      <div class="work">
+        <div class="list" id="list"></div>
+        <aside class="detail" id="detail" hidden></aside>
+      </div>
+    </div>
+  </section>
+  <section id="v-trk" hidden></section>
+  <section id="v-new" hidden></section>
+  <section id="v-boss" hidden></section>
+  <section id="v-plan" hidden></section>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/* 실제 운영(구글 로그인)에서는 google.script.run 이 있고, 견본 화면에서는 없다 */
+const LIVE=!!(window.google&&google.script&&google.script.run);
+const SAMPLE_NOW=new Date('2026-11-17T14:00:00');
+const NOW=()=>LIVE?new Date():SAMPLE_NOW;
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $=id=>document.getElementById(id);
+const p2=n=>String(n).padStart(2,'0');
+const pd=s=>new Date(String(s).replace(' ','T'));                 // 'YYYY-MM-DD HH:MM' → 날짜
+const iso=d=>d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());
+const ts=()=>{const d=LIVE?new Date():new Date(SAMPLE_NOW.getFullYear(),SAMPLE_NOW.getMonth(),SAMPLE_NOW.getDate(),new Date().getHours(),new Date().getMinutes());return iso(d)+' '+p2(d.getHours())+':'+p2(d.getMinutes())};
+const md=s=>{const d=pd(s);return (d.getMonth()+1)+'/'+d.getDate()};
+const sh=s=>{const d=pd(s);return md(s)+(String(s).length>10?' '+p2(d.getHours())+':'+p2(d.getMinutes()):'')};
+const day0=d=>new Date(d.getFullYear(),d.getMonth(),d.getDate());
+const gap=(a,b)=>Math.round((day0(pd(b))-day0(pd(a)))/864e5);    // a에서 b까지 날짜 수
+const days=s=>Math.round((day0(NOW())-day0(pd(s)))/864e5);        // 오늘까지 날짜 수
+const won=n=>n?n.toLocaleString('ko-KR')+'원':'0원';
+
+/* 'AS 비용' 탭 기준: [1~2년, 2년 이후] */
+const FEE={'신형뷰러':[19000,19000],'구형뷰러':[15000,15000],'프리미엄 플러스':[45000,60000],'트라이':[50000,65000],'트리플':[55000,80000],'베이직 미니':[30000,30000],'듀얼 딥웨이브':[90000,90000],'베라건':[29000,29000],'피지흡입기':[25000,25000],'기타':[0,0]};
+const BLOCKED={'신형뷰러':'유상 AS 접수 불가 (공장 일정, 2027년 1월 재개)'};
+const SYMPTOMS=['손잡이파손','측면파손','본체파손','온열안됨','파란불 깜박임','배터리고장','충전안됨','전극헤드파손','정상작동'];
+let SETTINGS={account:''};
+let ROLE_NAME={상담:'김은진',창고:'최미영 실장'};
+let USER=null;
+
+const ST={
+ judge:{todo:'접수 확인·판정',own:'상담',step:0},
+ pickup:{todo:'수거 접수·송장 등록',own:'상담',step:1},
+ transit:{todo:'수거·이동 기다림',own:'자동',wait:1,step:2},
+ inspect:{todo:'개봉·검사 필요',own:'창고',red:1,step:3},
+ notify:{todo:'고객 안내 필요',own:'상담',red:1,step:4},
+ pay:{todo:'입금 기다림',own:'자동',wait:1,step:5},
+ ship:{todo:'출고·송장 입력',own:'창고',step:6},
+ done:{todo:'완료',own:'-',end:1,step:7},
+ hold:{todo:'보류',own:'상담',end:1,step:-1},
+ closed:{todo:'종결(진행 안 함)',own:'-',end:1,step:-1}
+};
+const STEPS=['접수·판정','수거 접수','수거·이동','개봉·검사','고객 안내','입금','출고','완료'];
+const ALERT={fail:'재수거 확인',stale:'배송 확인 (48시간 이동 없음)',nopick:'수거 확인 (3일째 수거 안 됨)',overdue:'입금 재안내'};
+
+/* ---------- 견본 자료 ---------- */
+const T=s=>{const [d,t]=s.split(' ');const [m,dd]=d.split('/');return '2026-'+p2(m)+'-'+p2(dd)+(t?' '+t:'')};
+const H=(t,who,x)=>({t:T(t),who,x});
+const E=a=>({t:T(a[0]),k:a[1],x:a[2],loc:a[3]||''});
+const C=o=>Object.assign({method:'수거',addr:'',inTrack:'',outTrack:'',inspect:'',plan:'',alert:null,hist:[],tin:[],tout:[],rev:0},o);
+function sampleCases(){
+ const S=(o,h,tin,tout)=>C(Object.assign(o,{recv:T(o.recv),hist:(h||[]).map(a=>H(...a)),tin:(tin||[]).map(E),tout:(tout||[]).map(E)}));
+ return [
+ S({id:'AS-1117-04',inflow:'AS 신청서',sub:'홈페이지 접수폼',recv:'11/17 11:08',name:'김○아',phone:'010-****-2711',fam:'신형뷰러',product:'신형뷰러 JV-306 퍼플',buy:'2025-12-29',shop:'네이버',symptom:'눈썹이 말리지 않음',stage:'judge'},[['11/17 11:08','자동','접수폼에서 들어옴']]),
+ S({id:'AS-1117-03',inflow:'AS 신청서',sub:'홈페이지 접수폼',recv:'11/17 11:59',name:'조○숙',phone:'010-****-1543',fam:'신형뷰러',product:'신형뷰러 JV-306 퍼플',buy:'2024-10-30',shop:'공구(확인 필요)',symptom:'간격이 떠서 속눈썹이 집히지 않음',stage:'judge'},[['11/17 11:59','자동','접수폼에서 들어옴']]),
+ S({id:'AS-1116-07',inflow:'카카오톡',sub:'채널 상담',recv:'11/16 10:20',name:'전○영',phone:'010-****-7580',fam:'신형뷰러',product:'신형뷰러 JV-306 화이트',buy:'2026-01-13',shop:'쿠팡',symptom:'열은 오르나 속눈썹이 올라가지 않음',stage:'pickup'},[['11/16 10:20','김은진','카톡 상담 내용으로 접수'],['11/16 10:24','김은진','판정: 무상 (구매 후 1년 이내) · 수거로 진행']]),
+ S({id:'AS-1116-05',inflow:'네이버',sub:'톡톡',recv:'11/16 14:02',name:'이○숙',phone:'010-****-7273',fam:'신형뷰러',product:'신형뷰러 JV-306 퍼플',buy:'2025-12-29',shop:'네이버',symptom:'집는 손잡이가 안 됨',stage:'pickup'},[['11/16 14:02','김은진','톡톡 내용으로 접수 · 판정: 무상']]),
+ S({id:'AS-1113-02',inflow:'카카오톡',sub:'채널 상담',recv:'11/13 15:02',name:'김○전',phone:'010-****-9500',fam:'베이직 미니',product:'베이직 미니 마사지기',buy:'2026-11-01',shop:'자사몰',symptom:'전원이 켜졌다 꺼짐',stage:'transit',inTrack:'2688-3694-****',alert:{type:'fail',x:'11/15 기사 방문, 고객 부재로 수거 실패'}},[['11/13 15:10','김은진','수거 접수 · 송장 등록'],['11/15 17:40','택배 연동','수거 실패 (고객 부재)']],[['11/13 15:10','book','수거 예약','용인기흥'],['11/15 17:40','fail','수거 실패 (고객 부재)','용인기흥']]),
+ S({id:'AS-1110-01',inflow:'AS 신청서',sub:'홈페이지 접수폼',recv:'11/10 13:49',name:'이○영',phone:'010-****-7042',fam:'신형뷰러',product:'신형뷰러 JV-306 화이트',buy:'2026-07-07',shop:'쿠팡',symptom:'전원을 켜도 히팅이 안 됨',stage:'transit',inTrack:'2645-4302-****'},[['11/10 14:05','김은진','판정: 무상 · 수거 접수'],['11/13 16:22','택배 연동','수거 완료']],[['11/10 14:05','book','수거 예약','서울은평'],['11/13 16:22','picked','수거 완료','서울은평']]),
+ S({id:'AS-1116-02',inflow:'AS 신청서',sub:'홈페이지 접수폼',recv:'11/16 09:10',name:'강○미',phone:'010-****-8959',fam:'신형뷰러',product:'신형뷰러 JV-306 화이트',buy:'2026-03-01',shop:'쿠팡',symptom:'잘 안 집어짐',stage:'transit',inTrack:'2645-4311-****'},[['11/16 09:30','김은진','판정: 무상 · 수거 접수']],[['11/16 09:30','book','수거 예약','창원의창'],['11/17 10:40','picked','수거 완료','창원의창'],['11/17 13:05','move','이동 중','대전 허브']]),
+ S({id:'AS-1109-03',inflow:'AS 신청서',sub:'홈페이지 접수폼',recv:'11/09 08:06',name:'박○민',phone:'010-****-9580',fam:'신형뷰러',product:'신형뷰러 JV-306 탄젤로',buy:'2025-11-10',shop:'쿠팡',symptom:'고무가 헐거워져 눈썹이 안 집힘',stage:'inspect',inTrack:'2645-4298-****'},[['11/09 09:12','김은진','판정: 무상 · 수거 접수'],['11/14 11:51','택배 연동','창고 도착']],[['11/09 09:12','book','수거 예약','서울동대문'],['11/11 15:30','picked','수거 완료','서울동대문'],['11/12 02:10','move','이동 중','대전 허브'],['11/14 11:51','arrived','창고 도착','시흥 배곧']]),
+ S({id:'AS-1111-06',inflow:'네이버',sub:'교환접수',recv:'11/11 09:41',name:'이○빈',phone:'010-****-6590',fam:'신형뷰러',product:'신형뷰러 JV-306 퍼플',buy:'2026-11-09',shop:'네이버',symptom:'[교환] 오른쪽 부분이 깨져서 도착',stage:'inspect',inTrack:'2645-4305-****'},[['11/11 10:00','김은진','네이버 교환접수 건 등록'],['11/15 13:50','택배 연동','창고 도착']],[['11/11 10:00','book','수거 예약','부산북구'],['11/13 14:05','picked','수거 완료','부산북구'],['11/14 03:20','move','이동 중','대전 허브'],['11/15 13:50','arrived','창고 도착','시흥 배곧']]),
+ S({id:'AS-1105-02',inflow:'AS 신청서',sub:'홈페이지 접수폼',recv:'11/05 10:04',name:'김○라',phone:'010-****-0509',fam:'듀얼 딥웨이브',product:'듀얼 딥웨이브',buy:'',shop:'인플루언서 공구(확인 안 됨)',symptom:'충전 후에도 기기가 먹통',stage:'notify',inTrack:'2645-4280-****',inspect:'충전안됨',plan:'paid',inspAt:'2026-11-13 16:30'},[['11/05 10:10','김은진','구매일 확인 안 됨 → 유상 가능성 사전 안내 후 수거'],['11/12 14:50','택배 연동','창고 도착'],['11/13 16:30','최미영 실장','검사: 충전안됨 · 전용 충전선으로도 충전 불가']],[['11/05 10:10','book','수거 예약','대구북구'],['11/10 16:00','picked','수거 완료','대구북구'],['11/12 14:50','arrived','창고 도착','시흥 배곧']]),
+ S({id:'AS-1104-01',inflow:'카카오톡',sub:'채널 상담',recv:'11/04 12:48',name:'정○희',phone:'010-****-6827',fam:'프리미엄 플러스',product:'[1775] 프리미엄 플러스 로얄베이지',buy:'2024-08-31',shop:'보상판매',symptom:'완충해도 금방 꺼짐',stage:'pay',inTrack:'2645-4270-****',inspect:'배터리고장',plan:'paid',payAsk:'2026-11-11'},[['11/04 13:00','김은진','판정: 유상 (2년 이후) 60,000원 · 수거 접수'],['11/10 11:50','최미영 실장','검사: 배터리고장'],['11/11 10:05','김은진','비용 60,000원 문자 안내']],[['11/04 13:00','book','수거 예약','전주덕진'],['11/06 11:20','picked','수거 완료','전주덕진'],['11/09 11:50','arrived','창고 도착','시흥 배곧']]),
+ S({id:'AS-1106-04',inflow:'AS 신청서',sub:'홈페이지 접수폼',recv:'11/06 08:52',name:'이○윤',phone:'010-****-0673',fam:'트리플',product:'[105] 트리플 로얄베이지',buy:'2025-03-21',shop:'자사몰',symptom:'2칸에서 바로 1칸으로 떨어짐',stage:'pay',inTrack:'2645-4276-****',inspect:'배터리고장',plan:'paid',payAsk:'2026-11-16'},[['11/13 15:00','최미영 실장','검사: 배터리고장'],['11/16 09:40','김은진','비용 55,000원 문자 안내']],[['11/06 09:00','book','수거 예약','부산강서'],['11/10 13:10','picked','수거 완료','부산강서'],['11/12 13:50','arrived','창고 도착','시흥 배곧']]),
+ S({id:'AS-1103-05',inflow:'AS 신청서',sub:'홈페이지 접수폼',recv:'11/03 09:20',name:'최○정',phone:'010-****-2352',fam:'신형뷰러',product:'신형뷰러 JV-306 탄젤로',buy:'2025-12-03',shop:'네이버',symptom:'눈썹이 집어지지 않음',stage:'ship',inTrack:'2645-4266-****',inspect:'손잡이파손',plan:'free'},[['11/10 14:20','최미영 실장','검사: 손잡이파손'],['11/11 09:15','김은진','무상 교환 안내 완료']],[['11/03 10:00','book','수거 예약','여수'],['11/05 15:00','picked','수거 완료','여수'],['11/09 11:50','arrived','창고 도착','시흥 배곧']]),
+ S({id:'AS-1102-02',inflow:'카카오톡',sub:'채널 상담',recv:'11/02 10:55',name:'최○정',phone:'010-****-4180',fam:'신형뷰러',product:'신형뷰러 JV-306 퍼플',buy:'2023-12-07',shop:'면세점',symptom:'손잡이 파손',stage:'hold'},[['11/02 11:00','김은진','유상 AS 접수 불가 안내 → 고객 불만, 카톡 상담 중']]),
+ S({id:'AS-1029-08',inflow:'AS 신청서',sub:'홈페이지 접수폼',recv:'10/29 09:33',name:'한○진',phone:'010-****-3022',fam:'신형뷰러',product:'신형뷰러 JV-306 화이트',buy:'2025-11-16',shop:'네이버',symptom:'경첩 부위 파손',stage:'done',inTrack:'2645-4250-****',outTrack:'2645-4302-****',inspect:'손잡이파손',plan:'free'},[['11/12 10:30','최미영 실장','검사: 손잡이파손'],['11/17 10:00','최미영 실장','교환품 출고 · 출고 안내 문자 발송']],[['10/29 10:00','book','수거 예약','수원권선'],['11/09 14:00','picked','수거 완료','수원권선'],['11/11 11:50','arrived','창고 도착','시흥 배곧']],[['11/17 10:00','book','출고 접수','시흥 배곧'],['11/17 13:20','picked','집화 완료','시흥 배곧']]),
+ S({id:'AS-1027-03',inflow:'네이버',sub:'톡톡',recv:'10/27 10:47',name:'윤○경',phone:'010-****-4417',fam:'트리플',product:'[105] 트리플 로얄베이지',buy:'2026-02-11',shop:'네이버',symptom:'충전이 안 됨',stage:'done',inTrack:'2645-4241-****',outTrack:'2645-4288-****',inspect:'충전안됨',plan:'free'},[['11/06 15:10','최미영 실장','검사: 충전안됨'],['11/12 10:20','최미영 실장','교환품 출고 · 출고 안내 문자 발송'],['11/14 13:42','택배 연동','고객 수령 확인']],[['10/27 11:00','book','수거 예약','인천연수'],['11/03 15:00','picked','수거 완료','인천연수'],['11/05 11:50','arrived','창고 도착','시흥 배곧']],[['11/12 10:20','book','출고 접수','시흥 배곧'],['11/12 17:30','picked','집화 완료','시흥 배곧'],['11/13 04:10','move','이동 중','대전 허브'],['11/14 09:05','move','배송 출발','인천연수'],['11/14 13:42','arrived','고객 수령','인천연수']]),
+ S({id:'HS-1115-01',inflow:'현대홈쇼핑',sub:'반품회수',recv:'11/15 01:08',name:'오○희',phone:'010-****-3318',fam:'베라건',product:'베라건 마사지건 JC-M4603',buy:'2026-11-08',shop:'현대홈쇼핑 (TV)',symptom:'반품 · 충동구매/변심 · 주문 20261108-******',stage:'inspect',inTrack:'2688-3701-****'},[['11/15 01:08','자동','현대홈쇼핑 회수요청 목록에서 들어옴'],['11/17 09:40','택배 연동','창고 도착']],[['11/15 01:08','book','수거 예약','성남분당'],['11/16 14:20','picked','수거 완료','성남분당'],['11/17 09:40','arrived','창고 도착','시흥 배곧']]),
+ S({id:'HS-1116-02',inflow:'현대홈쇼핑',sub:'교환회수',recv:'11/16 01:06',name:'서○자',phone:'010-****-8020',fam:'베라건',product:'베라건 마사지건 JC-M4603',buy:'2026-11-08',shop:'현대홈쇼핑 (TV)',symptom:'교환 · 마감처리 불량 · 주문 20261108-******',stage:'transit',inTrack:'2688-3712-****'},[['11/16 01:06','자동','현대홈쇼핑 회수요청 목록에서 들어옴']],[['11/16 01:06','book','수거 예약','청주흥덕'],['11/17 11:00','picked','수거 완료','청주흥덕']]),
+ S({id:'HS-1113-03',inflow:'현대홈쇼핑',sub:'반품회수',recv:'11/13 01:07',name:'김○전',phone:'010-****-9500',fam:'베이직 미니',product:'베이직 미니 마사지기',buy:'2026-11-01',shop:'현대홈쇼핑 (TV)',symptom:'반품 · 변심 · 주문 20261101-******',stage:'transit',inTrack:'2688-3699-****'},[['11/13 01:07','자동','현대홈쇼핑 회수요청 목록에서 들어옴']],[['11/13 01:07','book','수거 예약','용인기흥']])
+ ];
+}
+let cases=LIVE?[]:sampleCases();
+
+/* ---------- 판정·경고·상태 계산 ---------- */
+function warranty(c){
+  const f=FEE[c.fam]||[0,0];
+  if(!c.buy) return {k:'paid',label:'구매일 확인 안 됨 → 유상 기준',fee:f[1]};
+  const y=(pd(c.recv)-pd(c.buy))/864e5/365;
+  if(y<1) return {k:'free',label:'무상 (구매 후 1년 이내)',fee:0};
+  return {k:'paid',label:'유상 ('+(y<2?'1~2년':'2년 이후')+')',fee:y<2?f[0]:f[1]};
+}
+function alertOf(c){
+  if(c.alert) return c.alert;
+  if(c.stage==='transit'){
+    const l=c.tin[c.tin.length-1];
+    if(l&&(l.k==='picked'||l.k==='move')){const b=c.staleAck&&c.staleAck>l.t?c.staleAck:l.t; if((NOW()-pd(b))/36e5>=48) return {type:'stale',x:sh(l.t)+' '+l.x+' 뒤 48시간 넘게 이동 기록 없음'}}
+    if(l&&l.k==='book'&&days(l.t)>=3) return {type:'nopick',x:sh(l.t)+' 수거 접수 뒤 '+days(l.t)+'일째 수거 기록 없음'};
+  }
+  if(c.stage==='pay'&&c.payAsk){const b=c.payRemind&&c.payRemind>c.payAsk?c.payRemind:c.payAsk; if(days(b)>=3) return {type:'overdue',x:md(c.payAsk)+' 비용 안내 뒤 '+days(c.payAsk)+'일째 입금 없음'}}
+  return null;
+}
+function task(c){
+  const s=ST[c.stage], a=alertOf(c);
+  if(a) return {todo:ALERT[a.type],own:'상담',red:1,wait:0,alert:a};
+  return {todo:s.todo,own:s.own,red:!!s.red,wait:!!s.wait,end:!!s.end};
+}
+function pickupInfo(c){
+  const p=c.tin.find(e=>e.k==='picked')||c.tin.find(e=>e.k==='arrived');
+  if(p){const d=gap(c.recv,p.t);return {done:1,d,t:p.t,txt:d<=0?'접수 당일 수거':'접수 '+d+'일 만에 수거'}}
+  if(c.method==='고객발송') return {txt:'고객 직접 발송'};
+  if(ST[c.stage].end) return null;
+  const d=days(c.recv);return {done:0,d,late:d>=3,txt:d<=0?'오늘 접수 · 수거 전':'접수 '+d+'일째 · 수거 전'};
+}
+const pkPill=c=>{const p=pickupInfo(c);return p?`<span class="pk ${p.late?'late':''}">${p.txt}</span>`:''};
+function dueInfo(c){ // 창고 확인(검사 결과 입력) 후 2영업일 안에 상담이 처리
+  if(c.stage!=='notify'||!c.inspAt) return null;
+  let d=day0(pd(c.inspAt)),n=0; while(n<2){d=new Date(d.getFullYear(),d.getMonth(),d.getDate()+1); if(d.getDay()%6) n++}
+  const left=Math.round((d-day0(NOW()))/864e5);
+  return {left,txt:'창고 확인 '+sh(c.inspAt)+' → 2영업일 기한 '+md(iso(d))+(left<0?' · '+(-left)+'일 지남':left===0?' · 오늘까지':' · '+left+'일 남음')};
+}
+const duePill=c=>{const u=dueInfo(c);return u?`<span class="${u.left<0?'trk bad':'pk late'}">${u.txt}</span>`:''};
+const GSTEPS=['고객 보관','수거 완료','이동 중','창고','출고·배송 중','고객 수령'];
+function goods(c){ // 물건이 지금 어디에 어떤 상태로 있는지
+  const o=c.tout[c.tout.length-1], i=c.tin[c.tin.length-1], a=alertOf(c);
+  if(o) return o.k==='arrived'?{s:5,txt:'고객 수령 완료',loc:o.loc,t:o.t,cls:'ok'}:{s:4,txt:'고객에게 배송 중 · '+o.x,loc:o.loc,t:o.t};
+  if(!i) return {s:0,txt:c.method==='고객발송'?'고객이 직접 발송 중 (송장 미확인)':'고객 보관 · 수거 접수 전',loc:'',t:''};
+  if(i.k==='fail') return {s:0,txt:'고객 보관 · 수거 실패',loc:i.loc,t:i.t,cls:'bad'};
+  if(i.k==='book') return {s:0,txt:'고객 보관 · 수거 기다림',loc:i.loc,t:i.t,cls:a&&a.type==='nopick'?'bad':''};
+  if(i.k!=='arrived'){const st=a&&a.type==='stale';return {s:i.k==='picked'?1:2,txt:'창고로 오는 중 · '+i.x+(st?' 뒤 멈춤':''),loc:i.loc,t:i.t,cls:st?'bad':''}}
+  const m={inspect:'창고 · 개봉·검사 기다림',notify:'창고 보관 · 고객 안내 기다림',pay:'창고 보관 · 입금 기다림',ship:'창고 · 출고 준비'};
+  return {s:3,txt:m[c.stage]||'창고 보관',loc:i.loc,t:i.t};
+}
+const goodsPill=c=>{const g=goods(c);return `<span class="trk ${g.cls||''}">물건: ${esc(g.txt)}${g.loc?' · '+esc(g.loc):''}</span>`};
+/* 단계 띠. 지금 단계가 막혔으면 빨강, 기다리는 중이면 노랑 */
+function stepBar(c){
+  const cur=ST[c.stage].step, t=task(c);
+  if(cur<0) return `<div class="steps"><span class="${c.stage==='hold'?'stuck':''}">${esc(ST[c.stage].todo)}</span></div>`;
+  return `<div class="steps">${STEPS.map((s,i)=>i<cur?`<span class="past">${s}</span>`:i>cur?`<span>${s}</span>`
+    :`<span class="${t.red?'stuck':t.wait?'waitc':'on'}">${s}${cur===7?'':t.red?' · 막힘':t.wait?' · 기다리는 중':' · 할 차례'}</span>`).join('')}</div>`;
+}
+const TSTEP={book:0,fail:0,picked:1,move:2,arrived:3};
+const TLAB={in:['수거 예약','수거 완료','이동 중','창고 도착'],out:['출고 접수','집화 완료','이동 중','고객 수령']};
+function trk(c,dir){
+  dir=dir||(c.tout.length?'out':c.tin.length?'in':null); if(!dir) return null;
+  const e=dir==='out'?c.tout:c.tin; if(!e.length) return null; const last=e[e.length-1], a=alertOf(c);
+  return {dir,e,last,step:TSTEP[last.k],bad:last.k==='fail'||(dir==='in'&&a&&(a.type==='stale'||a.type==='nopick')),no:dir==='out'?c.outTrack:c.inTrack};
+}
+const trackLink=no=>/^[\d-]+$/.test(no||'')?` · <a href="https://www.lotteglogis.com/home/reservation/tracking/linkView?InvNo=${no.replace(/-/g,'')}" target="_blank" rel="noopener">롯데택배에서 조회</a>`:'';
+function trkBlock(c,dir){const t=trk(c,dir);if(!t)return '';
+  return `<div><h3>${dir==='in'?'회수 송장 (고객 → 창고)':'출고 송장 (창고 → 고객)'} · 롯데택배 ${esc(t.no)}${trackLink(t.no)}</h3>
+  <div class="tsteps">${TLAB[dir].map((l,i)=>`<span class="${i<t.step?'past':i===t.step?(t.last.k==='fail'?'bad':'on'):''}">${l}</span>`).join('')}</div>
+  <ul class="hist">${t.e.slice().reverse().map(h=>`<li><small>${sh(h.t)}${h.loc?' · '+esc(h.loc):''}</small>${esc(h.x)}</li>`).join('')}</ul></div>`}
+function liveBlock(c){
+  const g=goods(c), p=pickupInfo(c), arr=c.tin.find(e=>e.k==='arrived'), got=c.tout.find(e=>e.k==='arrived');
+  const line=[`<b>접수</b> ${sh(c.recv)}`];
+  if(p&&p.done) line.push(`<b>수거</b> ${sh(p.t)} (${p.txt})`); else if(p) line.push(`<b>수거</b> ${p.txt}`);
+  if(arr) line.push(`<b>창고 도착</b> ${sh(arr.t)} (접수 ${gap(c.recv,arr.t)}일째)`);
+  if(got) line.push(`<b>고객 수령</b> ${sh(got.t)} (접수 ${gap(c.recv,got.t)}일째)`);
+  return `<div class="live ${g.cls==='bad'?'bad':''}"><span class="lab"><span class="dot"></span>물건 지금 상태${g.t?' · 마지막 갱신 '+sh(g.t):''}</span>
+  <span class="big">${esc(g.txt)}${g.loc?' · '+esc(g.loc):''}</span>
+  <div class="gsteps">${GSTEPS.map((l,k)=>`<span class="${k<g.s?'past':k===g.s?(g.cls==='bad'?'bad':'on'):''}">${l}</span>`).join('')}</div>
+  <p>${line.join(' → ')}</p></div>`;
+}
+const acct=()=>SETTINGS.account||'(설정 탭의 입금계좌가 여기에 들어갑니다)';
+const TPL={
+ pickup:c=>`(주)쥬베라 AS [발신전용]\n안녕하세요 쥬베라입니다.\n남겨 주신 주소로 택배 수거접수 되었습니다.\n\n본품과 구성품 모두를 포장하여 [쥬베라AS]라고 꼭 기재 후 기사님께 전달하여 주시기 바랍니다.\n금일 롯데택배로 수거접수 신청하면 빠르면 내일 기사님께서 연락 후 방문 예정입니다.\n\n중요: 정상 작동이 확인 시 착불로 재발송 될 수 있음을 미리 안내드립니다.\n* AS 진행까지 최소 7일, 최대 14일 소요될 수 있습니다.`,
+ blocked:c=>`안녕하세요. 고객님! 쥬베라입니다.\n현재 고객님의 상품은 구매일로부터 1년이 경과되어 유상 AS 대상에 해당되십니다.\n제조 공장의 생산 일정 지연으로 일시적으로 AS 진행이 어려운 상황이며, 2027년 1월부터 유상 AS 접수가 재개될 예정입니다.\n2027년 1월 이후 다시 문의해 주시면 신속하게 접수를 도와드리겠습니다.`,
+ paid:(c,fee)=>`(주)쥬베라 AS 입니다.\n보내주신 제품 확인하였으며 고장 증상(${c.inspect})이 확인되었습니다.\n아래 비용 안내드리오니 입금 후 회신 주시면 새제품으로 출고 예정입니다.\n\n금액 : ${won(fee)}\n입금계좌 : ${acct()}`,
+ free:c=>`안녕하세요 고객님, AS 신청해주신 (주)쥬베라 입니다.\n제품 확인 결과 ${c.inspect}으로 확인되어 무상으로 새 제품 교환 출고 예정입니다.`,
+ normal:c=>`안녕하세요 고객님, AS 보내주신 (주)쥬베라 입니다.\n제품 확인 결과 정상작동 되어 재발송 안내드립니다.\n\nAS접수 증상 : ${c.symptom}\n확인결과 : 정상`,
+ out:c=>`(주)쥬베라 AS [발신전용]\n안녕하세요 고객님 A/S 접수해 주신 쥬베라입니다.\n상품 회수 및 확인 완료되어 오늘 출고되었습니다.\n송장번호 : ${c.outTrack||'(출고 송장 입력 시 자동)'}\n평일 기준으로 2~3일 내에 배송 예정이오니 참고하여 주세요.`
+};
+
+/* ---------- 화면 상태 ---------- */
+let filt='todo', owner='all', sel=null, q='', dtab='do', cat='as', editH=-1, editInfo=false;
+const Hd=k=>dtab===k?'':'hidden';
+const catOf=c=>c.inflow==='현대홈쇼핑'?'hs':'as';
+const disp=o=>ROLE_NAME[o]||(o==='자동'?'자동 감시':o);
+const role=()=>LIVE&&USER?USER.role:$('me').value;
+const myName=()=>LIVE&&USER?USER.name:disp($('me').value);
+function log(c,x){c.hist.push({t:ts(),who:myName(),x})}
+function toast(t){const e=$('toast');e.textContent=t;e.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>e.hidden=true,2400)}
+
+/* ---------- 목록 ---------- */
+const GROUPS=[['judge','접수 확인·판정','상담'],['pickup','수거 접수','상담'],['alert','수거·입금 경고','상담'],['inspect','개봉·검사','창고'],['notify','고객 안내','상담'],['ship','출고','창고']];
+function inGroup(c,g){const a=alertOf(c); if(g==='alert') return !!a; return c.stage===g && !a}
+function visible(){
+  let v=cases;
+  if(q){const k=q.replace(/[\s-]/g,'');return v.filter(c=>(c.id+c.name+c.phone+c.inTrack+c.outTrack+c.product).replace(/[\s-]/g,'').includes(k))}
+  v=v.filter(c=>catOf(c)===cat);
+  if(filt==='todo') v=v.filter(c=>{const t=task(c);return !t.wait&&!t.end});
+  else if(filt==='wait') v=v.filter(c=>task(c).wait);
+  else if(filt==='hold') v=v.filter(c=>c.stage==='hold');
+  else if(filt==='done') v=v.filter(c=>c.stage==='done'||c.stage==='closed');
+  else v=v.filter(c=>inGroup(c,filt));
+  if(owner!=='all') v=v.filter(c=>task(c).own===owner);
+  return v.slice().sort((a,b)=>(task(b).red-task(a).red)||(pd(a.recv)-pd(b.recv)));
+}
+function renderStrip(){
+  const open=k=>cases.filter(c=>catOf(c)===k&&!ST[c.stage].end).length;
+  $('catSeg').innerHTML=[['as','일반 AS'],['hs','현대홈쇼핑']].map(([k,l])=>`<button data-c="${k}" aria-pressed="${cat===k}"><b>${l}</b><span>진행 ${open(k)}건</span></button>`).join('');
+  const cnt=f=>cases.filter(c=>catOf(c)===cat&&f(c)).length;
+  const items=[['todo','지금 할 일 전체',cnt(c=>{const t=task(c);return !t.wait&&!t.end}),'',0],
+   ...GROUPS.map(([g,l,o])=>[g,l,cnt(c=>inGroup(c,g)),disp(o),['alert','inspect','notify'].includes(g)]),
+   ['wait','기다리는 중',cnt(c=>task(c).wait),'자동 감시',0],['hold','보류',cnt(c=>c.stage==='hold'),'',0],['done','완료·종결',cnt(c=>ST[c.stage].end&&c.stage!=='hold'),'',0]];
+  $('strip').innerHTML=items.map(([k,l,n,o,h])=>`<button data-f="${k}" aria-pressed="${filt===k&&!q}" class="${h&&n?'hot':''}"><b>${n}</b><span>${l}</span><em>${o||'&nbsp;'}</em></button>`).join('');
+}
+function renderList(){
+  const v=visible();
+  $('list').innerHTML=v.length?v.map(c=>{const t=task(c);const oc=t.own==='상담'?'c':t.own==='창고'?'w':t.own==='자동'?'a':'';
+    const h=c.hist[c.hist.length-1];
+    return `<div class="row ${t.red?'urgent':''} ${sel===c.id?'sel':''}" role="button" tabindex="0" data-id="${esc(c.id)}">
+      <span class="path"><span class="when">${sh(c.recv)} 접수</span><i>›</i><span>${esc(c.inflow)}</span><i>›</i><span>${esc(c.sub)}</span><i>›</i><span class="todo">${esc(t.todo)}</span></span>
+      <span class="who ${oc}">${esc(disp(t.own))}</span>
+      <span class="meta full"><b>${esc(c.name)}</b> · ${esc(c.product)} · ${esc(c.symptom)}</span>
+      <span class="pills full">${duePill(c)}${pkPill(c)}${goodsPill(c)}</span>
+      <span class="full">${stepBar(c)}</span>
+      ${t.alert?`<span class="meta full" style="color:var(--red);font-weight:600">막힌 이유: ${esc(t.alert.x)}</span>`:''}
+      <span class="last full">이력 ${c.hist.length}건${h?` · 최근 <b>${sh(h.t)} ${esc(h.who)}</b> · ${esc(h.x)}`:''}</span></div>`}).join('')
+   :`<div class="empty">${q?'검색 결과가 없습니다.':'이 칸에는 지금 할 일이 없습니다.'}</div>`;
+}
+
+/* ---------- 상세 ---------- */
+function nextBox(c){
+  const t=task(c), w=warranty(c), blk=w.k==='paid'&&BLOCKED[c.fam], a=t.alert;
+  let body='',acts='';
+  if(a){
+    body=`<p>${esc(a.x)}</p>`;
+    if(a.type==='fail') acts=`<button class="btn" data-a="clear">재수거 접수했음</button><button class="btn ghost" data-a="hold">고객 연락 안 됨 → 보류</button>`;
+    if(a.type==='nopick') acts=`<button class="btn" data-a="markPicked">수거된 것 확인함</button><button class="btn ghost" data-a="clear">재수거 접수했음</button><button class="btn ghost" data-a="hold">보류</button>`;
+    if(a.type==='stale') acts=`<button class="btn" data-a="clear">택배사 확인했음 (이동 중)</button><button class="btn ghost" data-a="arrive">창고 도착 확인됨</button>`;
+    if(a.type==='overdue') acts=`<button class="btn" data-a="clear">재안내 보냈음</button><button class="btn ghost" data-a="paid">입금 확인됨</button><button class="btn ghost" data-a="nopay">진행 안 함 → 착불 반송</button>`;
+  } else if(c.stage==='judge'){
+    body=`<p>자동 판정: <span class="tag ${blk?'no':w.k}">${blk?'접수 불가':w.k==='free'?'무상':'유상 '+won(w.fee)}</span> ${esc(blk||w.label)}</p>`;
+    acts=blk?`<button class="btn" data-a="block">접수 불가 안내하고 종결</button><button class="btn ghost" data-a="toPickup">예외로 수거 진행</button>`
+      :`<button class="btn" data-a="toPickup">맞음 → 수거로 진행</button><button class="btn ghost" data-a="selfShip">고객이 직접 발송</button>`;
+    acts+=`<button class="btn ghost" data-a="hold">보류</button>`;
+  } else if(c.stage==='pickup'){
+    body=`<p>롯데택배 수거를 접수하고 회수 송장번호를 넣어 주세요. 저장하면 수거 안내 문자가 '안내문' 탭에 준비됩니다.</p><label class="field">회수 송장번호<input type="text" id="f-in" placeholder="예: 2645-0000-0000"></label>`;
+    acts=`<button class="btn" data-a="pickupDone">수거 접수 완료</button>`;
+  } else if(c.stage==='transit'){
+    const picked=c.tin.some(e=>e.k==='picked');
+    body=`<p>${c.method==='고객발송'?'고객이 선불로 보내는 중입니다.':'택배 이동을 기다립니다. 수거 실패, 3일째 수거 안 됨, 48시간 이동 없음이면 빨갛게 올라옵니다.'} 택배 자동 조회가 붙기 전까지는 아래 버튼으로 표시합니다.</p>`;
+    acts=(picked||c.method==='고객발송'?'':`<button class="btn" data-a="markPicked">수거됨</button>`)+`<button class="btn ${picked||c.method==='고객발송'?'':'ghost'}" data-a="arrive">창고 도착</button>`+(c.method==='고객발송'?'':`<button class="btn ghost" data-a="markFail">수거 실패</button>`);
+  } else if(c.stage==='inspect'){
+    body=`<p>상자를 열어 확인한 결과를 고르세요.</p><label class="field">검사 결과<select id="f-sym">${SYMPTOMS.map(s=>`<option>${s}</option>`).join('')}</select></label><label class="field">창고 메모 (선택)<input type="text" id="f-note" placeholder="예: 충전선 없이 본품만 옴"></label>`;
+    acts=`<button class="btn" data-a="inspectDone">검사 결과 저장 → ${esc(disp('상담'))}에게 넘김</button>`;
+  } else if(c.stage==='notify'){
+    const p=c.plan, u=dueInfo(c);
+    body=`<p>검사 결과 <b>${esc(c.inspect)}</b> → ${p==='normal'?'정상작동, 착불 재발송':p==='free'?'무상 교환':'유상 '+won(w.fee)}. '안내문' 탭의 문구를 보내고 눌러 주세요.</p>${u?`<p><b>${u.txt}</b></p>`:''}`;
+    acts=`<button class="btn" data-a="notifyDone">고객 안내 완료</button><button class="btn ghost" data-a="hold">고객 연락 안 됨 → 보류</button>`;
+  } else if(c.stage==='pay'){
+    body=`<p>${md(c.payAsk)} 비용 안내 · ${days(c.payAsk)}일째 입금 기다리는 중. 3일이 지나면 재안내 표시가 뜹니다.</p>`;
+    acts=`<button class="btn" data-a="paid">입금 확인됨</button><button class="btn ghost" data-a="nopay">진행 안 함 → 착불 반송</button>`;
+  } else if(c.stage==='ship'){
+    body=`<p>${c.plan==='normal'||c.plan==='return'?'받은 제품을 착불로 재발송':'새 제품 교환 출고'}합니다. 송장을 넣으면 출고 안내 문자가 준비되고 완료됩니다.</p><label class="field">출고 송장번호<input type="text" id="f-out" placeholder="예: 2645-0000-0000"></label>`;
+    acts=`<button class="btn" data-a="shipDone">출고 완료</button>`;
+  } else if(c.stage==='hold'){
+    body=`<p>보류 중입니다. 다시 진행할 때 눌러 주세요.</p>`; acts=`<button class="btn" data-a="resume">다시 진행 (판정부터)</button><button class="btn ghost" data-a="close">종결</button>`;
+  } else {
+    const o=c.tout[c.tout.length-1];
+    body=`<p>처리가 끝난 건입니다.</p>`;
+    if(c.stage==='done'&&o&&o.k!=='arrived') acts=`<button class="btn ghost" data-a="received">고객 수령 확인</button>`;
+  }
+  return `<div class="next ${t.red?'urgent':''}"><span class="lab">지금 해야 할 일 · ${esc(disp(t.own))}</span><span class="big">${esc(t.todo)}</span>${body}<div class="acts">${acts}</div></div>`;
+}
+function msgFor(c){
+  const w=warranty(c);
+  if(c.stage==='judge'&&w.k==='paid'&&BLOCKED[c.fam]) return ['유상 AS 접수 불가 안내',TPL.blocked(c)];
+  if(c.stage==='pickup'||c.stage==='transit') return ['수거 안내',TPL.pickup(c)];
+  if(c.stage==='notify'||c.stage==='pay') return c.plan==='normal'?['정상작동 안내',TPL.normal(c)]:c.plan==='free'?['무상 교환 안내',TPL.free(c)]:['유상 비용 안내',TPL.paid(c,w.fee)];
+  if(c.stage==='ship'||c.stage==='done') return ['출고 안내',TPL.out(c)];
+  return null;
+}
+function histList(c,n){ // n개만(최근) 또는 전체. 각 줄은 수정 가능
+  const idx=c.hist.map((h,i)=>i).reverse().slice(0,n||c.hist.length);
+  return `<ul class="hist">${idx.map(i=>{const h=c.hist[i];
+    return editH===i?`<li><small>${sh(h.t)} · ${esc(h.who)}</small><div class="memo"><input type="text" id="f-edit" value="${esc(h.x)}"><button class="btn sm" data-a="saveHist">저장</button><button class="btn ghost sm" data-a="cancelHist">취소</button></div></li>`
+     :`<li><small>${sh(h.t)} · ${esc(h.who)}${h.ed?' · 수정 '+esc(h.ed):''}</small><div class="hrow"><span>${esc(h.x)}</span><button class="btn ghost sm" data-a="editHist" data-i="${i}">수정</button></div></li>`}).join('')}</ul>`;
+}
+const fld=(id,l,v,type)=>`<label class="field">${l}<input type="${type||'text'}" id="${id}" value="${esc(v||'')}"></label>`;
+function infoPane(c){
+  const w=warranty(c);
+  if(editInfo) return `<div><h3>접수 자료 수정</h3><div class="formgrid">
+    ${fld('e-name','고객명',c.name)}${fld('e-phone','연락처',c.phone)}${fld('e-addr','주소',c.addr)}
+    <label class="field">상담 인입경로<select id="e-inflow">${['AS 신청서','카카오톡','네이버','현대홈쇼핑','전화'].map(o=>`<option ${o===c.inflow?'selected':''}>${o}</option>`).join('')}</select></label>
+    ${fld('e-sub','세부 채널',c.sub)}
+    <label class="field">제품 종류 (금액 기준)<select id="e-fam">${Object.keys(FEE).map(o=>`<option ${o===c.fam?'selected':''}>${o}</option>`).join('')}</select></label>
+    ${fld('e-product','제품명·색상',c.product)}${fld('e-shop','구매처',c.shop)}${fld('e-buy','구매일',c.buy,'date')}${fld('e-sym','고객 증상',c.symptom)}
+    ${fld('e-in','회수 송장번호',c.inTrack)}${fld('e-out','출고 송장번호',c.outTrack)}
+  </div><div class="acts" style="margin-top:10px"><button class="btn" data-a="saveInfo">수정 저장</button><button class="btn ghost" data-a="cancelInfo">취소</button></div></div>`;
+  return `<div><h3>접수 자료</h3><dl>
+    <dt>접수 일시</dt><dd>${sh(c.recv)}</dd>
+    <dt>인입경로</dt><dd>${esc(c.inflow)} › ${esc(c.sub)}</dd>
+    <dt>연락처</dt><dd>${esc(c.phone)}</dd>
+    <dt>주소</dt><dd>${c.addr?esc(c.addr):'없음'}</dd>
+    <dt>제품</dt><dd>${esc(c.product)}</dd>
+    <dt>고객 증상</dt><dd>${esc(c.symptom)}</dd>
+    <dt>구매처</dt><dd>${esc(c.shop)}</dd>
+    <dt>구매일</dt><dd>${c.buy?esc(c.buy):'확인 안 됨'}</dd>
+    <dt>보증 판정</dt><dd><span class="tag ${w.k}">${w.k==='free'?'무상':'유상'}</span> ${esc(w.label)}${w.k==='paid'?' · 기준 금액 '+won(w.fee):''}</dd>
+    <dt>회수 방법</dt><dd>${c.method==='고객발송'?'고객 직접 발송(선불)':'롯데택배 수거'}${c.inTrack?' · 송장 '+esc(c.inTrack):''}</dd>
+    <dt>검사 결과</dt><dd>${c.inspect?esc(c.inspect):'아직 없음'}</dd>
+    <dt>출고</dt><dd>${c.outTrack?'송장 '+esc(c.outTrack):'아직 없음'}</dd>
+  </dl><div class="acts" style="margin-top:10px"><button class="btn ghost" data-a="editInfo">접수 자료 수정</button></div></div>`;
+}
+function renderDetail(){
+  const d=$('detail'); const c=cases.find(x=>x.id===sel);
+  if(!c){d.hidden=true;return}
+  d.hidden=false; const m=msgFor(c);
+  d.innerHTML=`<div class="dhead"><div><h2>${esc(c.name)} <small>${esc(c.phone)}</small></h2><small>${esc(c.id)} · ${esc(c.inflow)} › ${esc(c.sub)} · ${sh(c.recv)} 접수</small></div><button class="close" data-a="x">닫기</button></div>
+  <div class="dtabs" role="tablist">${[['do','할 일'],['trk','물건·송장'],['info','접수 자료'],['msg','안내문'],['hist','이력 '+c.hist.length]].map(([k,l])=>`<button role="tab" data-dt="${k}" aria-selected="${dtab===k}">${l}</button>`).join('')}</div>
+  <div class="dpane" ${Hd('do')}>${nextBox(c)}<div class="pills">${duePill(c)}${pkPill(c)}${goodsPill(c)}</div>${stepBar(c)}
+    <div><h3>최근 이력·메모</h3>${dtab==='do'?histList(c,3):''}<div class="memo" style="margin-top:8px"><input type="text" id="f-memo" placeholder="메모 남기기 (통화 내용 등)"><button class="btn ghost" data-a="memo">남기기</button></div></div></div>
+  <div class="dpane" ${Hd('trk')}>${liveBlock(c)}${trkBlock(c,'out')}${trkBlock(c,'in')}</div>
+  <div class="dpane" ${Hd('info')}>${infoPane(c)}</div>
+  <div class="dpane" ${Hd('msg')}>${m?`<div><h3>보낼 안내문 · ${m[0]}</h3><pre class="msg" id="msgtxt">${esc(m[1])}</pre><div class="acts" style="margin-top:6px"><button class="btn ghost" data-a="copy">안내문 복사</button></div></div>`:'<p style="margin:0">이 단계에서는 보낼 안내문이 없습니다.</p>'}</div>
+  <div class="dpane" ${Hd('hist')}><div><h3>이력 전체 (작성자 · 시간) · 줄마다 수정할 수 있습니다</h3>${dtab==='hist'?histList(c):''}
+    <div class="memo" style="margin-top:8px"><input type="text" id="f-memo2" placeholder="메모 남기기"><button class="btn ghost" data-a="memo">남기기</button></div></div></div>`;
+}
+function act(a,btn){
+  const c=cases.find(x=>x.id===sel); if(a==='x'){sel=null;return refresh()} if(!c) return;
+  const w=warranty(c); const val=id=>($(id)?.value||'').trim(); const al=alertOf(c);
+  switch(a){
+   case 'toPickup': c.stage='pickup';c.method='수거';log(c,'판정 확인: '+w.label+' · 수거로 진행');break;
+   case 'selfShip': c.stage='transit';c.method='고객발송';log(c,'판정 확인: '+w.label+' · 고객 직접 발송 안내');break;
+   case 'block': c.stage='closed';log(c,'유상 AS 접수 불가 안내 후 종결');break;
+   case 'pickupDone': if(!val('f-in')) return toast('회수 송장번호를 넣어 주세요'); c.inTrack=val('f-in');c.stage='transit';c.tin=[{t:ts(),k:'book',x:'수거 예약',loc:''}];log(c,'수거 접수 · 회수 송장 '+c.inTrack+' · 수거 안내 문자');break;
+   case 'markPicked': c.tin.push({t:ts(),k:'picked',x:'수거 완료',loc:''});log(c,'수거 완료 확인');break;
+   case 'markFail': c.tin.push({t:ts(),k:'fail',x:'수거 실패',loc:''});c.alert={type:'fail',x:sh(ts())+' 수거 실패로 표시됨'};log(c,'수거 실패 표시');break;
+   case 'arrive': c.alert=null;c.stage='inspect';c.tin.push({t:ts(),k:'arrived',x:'창고 도착',loc:'시흥 배곧'});log(c,'창고 도착 확인');break;
+   case 'clear':
+     if(al.type==='fail'||al.type==='nopick'){c.alert=null;c.tin.push({t:ts(),k:'book',x:'재수거 예약',loc:''});log(c,'재수거 접수함')}
+     else if(al.type==='stale'){c.staleAck=ts();log(c,'택배사 확인: 이동 중')}
+     else if(al.type==='overdue'){c.payRemind=iso(NOW());log(c,'입금 재안내 문자 보냄')}
+     break;
+   case 'inspectDone': {const s=val('f-sym');c.inspect=s;c.inspAt=ts();c.plan=s==='정상작동'?'normal':w.k==='free'?'free':'paid';c.stage='notify';log(c,'검사: '+s+(val('f-note')?' · '+val('f-note'):''));break}
+   case 'notifyDone': if(c.plan==='paid'){c.stage='pay';c.payAsk=iso(NOW());log(c,'비용 '+won(w.fee)+' 안내 완료')}else{c.stage='ship';log(c,(c.plan==='normal'?'정상작동 재발송':'무상 교환')+' 안내 완료')}break;
+   case 'paid': c.stage='ship';log(c,'입금 확인 '+won(w.fee));break;
+   case 'nopay': c.plan='return';c.stage='ship';log(c,'유상 진행 안 함 → 착불 반송');break;
+   case 'shipDone': if(!val('f-out')) return toast('출고 송장번호를 넣어 주세요'); c.outTrack=val('f-out');c.stage='done';c.tout=[{t:ts(),k:'book',x:'출고 접수',loc:'시흥 배곧'}];log(c,'출고 완료 · 송장 '+c.outTrack+' · 출고 안내 문자');break;
+   case 'received': c.tout.push({t:ts(),k:'arrived',x:'고객 수령',loc:''});log(c,'고객 수령 확인');break;
+   case 'hold': c.alert=null;c.stage='hold';log(c,'보류로 옮김');break;
+   case 'resume': c.stage='judge';log(c,'보류 해제');break;
+   case 'close': c.stage='closed';log(c,'종결');break;
+   case 'memo': {const m=val('f-memo')||val('f-memo2'); if(!m) return toast('메모 내용을 적어 주세요'); log(c,m);break}
+   case 'editHist': editH=+btn.dataset.i; return renderDetail();
+   case 'cancelHist': editH=-1; return renderDetail();
+   case 'saveHist': {const v=val('f-edit'); if(!v) return toast('내용을 적어 주세요'); const h=c.hist[editH]; if(h.x!==v){h.x=v;h.ed=myName()+' '+sh(ts())} editH=-1; break}
+   case 'editInfo': editInfo=true; return renderDetail();
+   case 'cancelInfo': editInfo=false; return renderDetail();
+   case 'saveInfo': Object.assign(c,{name:val('e-name'),phone:val('e-phone'),addr:val('e-addr'),inflow:val('e-inflow'),sub:val('e-sub'),fam:val('e-fam'),product:val('e-product'),shop:val('e-shop'),buy:val('e-buy'),symptom:val('e-sym'),inTrack:val('e-in'),outTrack:val('e-out')}); editInfo=false; log(c,'접수 자료 수정'); break;
+   case 'copy': {const t=$('msgtxt').textContent;navigator.clipboard?.writeText(t).then(()=>toast('안내문을 복사했습니다'),()=>toast('복사가 막혀 있습니다. 글을 길게 눌러 복사해 주세요'));return}
+   default: return;
+  }
+  persist(c); toast('저장했습니다 → '+task(c).todo); refresh();
+}
+function refresh(){renderStrip();renderList();renderDetail();if(!$('v-boss').hidden)renderBoss();if(!$('v-trk').hidden)renderTrk()}
+
+/* ---------- 송장 추적 화면 ---------- */
+function renderTrk(){
+  const rows=cases.map(c=>({c,t:trk(c)})).filter(r=>r.t).sort((a,b)=>(b.t.bad-a.t.bad)||(a.t.step-b.t.step));
+  const n=f=>rows.filter(f).length;
+  $('v-trk').innerHTML=`<div class="doc"><div><h2>송장 추적</h2>
+  <p>회수(고객 → 창고)와 출고(창고 → 고객) 송장이 지금 어디에 있는지 한 곳에서 봅니다. ${LIVE?'택배 자동 조회가 붙기 전까지는 직원이 누른 표시가 기록됩니다.':'지금은 예시 기록이며, 실제로는 롯데택배 조회 결과가 자동으로 들어옵니다.'}</p>
+  <div class="kpi"><div><b style="color:var(--red)">${n(r=>r.t.bad)}</b><span>문제 (수거 실패·멈춤)</span></div><div><b>${n(r=>r.t.dir==='in'&&r.t.step===0&&!r.t.bad)}</b><span>수거 기다림</span></div><div><b>${n(r=>r.t.dir==='in'&&(r.t.step===1||r.t.step===2)&&!r.t.bad)}</b><span>창고로 오는 중</span></div><div><b>${n(r=>r.t.dir==='in'&&r.t.step===3)}</b><span>창고 도착</span></div><div><b>${n(r=>r.t.dir==='out'&&r.t.step<3)}</b><span>고객에게 가는 중</span></div><div><b>${n(r=>r.t.dir==='out'&&r.t.step===3)}</b><span>고객 수령</span></div></div></div>
+  <div class="tw"><table><thead><tr><th>분류</th><th>접수 일시</th><th>접수 → 수거</th><th>방향</th><th>지금 상태</th><th>지금 위치</th><th>마지막 갱신</th><th>고객</th><th>송장번호</th><th>접수 건</th></tr></thead><tbody>
+  ${rows.map(({c,t})=>`<tr><td>${catOf(c)==='hs'?'현대홈쇼핑':'일반 AS'}</td><td class="n">${sh(c.recv)}</td><td>${pkPill(c)}</td><td>${t.dir==='in'?'회수':'출고'}</td><td><span class="trk ${t.bad?'bad':t.step===3?'ok':''}">${esc(t.last.x)}${t.bad&&t.last.k!=='fail'?' · 멈춤':''}</span></td><td>${esc(t.last.loc)}</td><td class="n">${sh(t.last.t)}</td><td>${esc(c.name)}</td><td class="n">${esc(t.no)}</td><td><button class="go" data-go="${esc(c.id)}">${esc(c.id)}</button></td></tr>`).join('')||'<tr><td colspan="10">송장이 등록된 건이 없습니다.</td></tr>'}</tbody></table></div></div>`;
+}
+
+/* ---------- 새 접수 ---------- */
+function renderNew(){
+  $('v-new').innerHTML=`<div class="doc"><div><h2>상담 내용을 붙여 넣으면 접수 항목으로 나눕니다</h2>
+  <p>카카오톡·톡톡·전화 메모를 그대로 붙여 넣고 누르세요. 나눠진 항목을 확인·수정한 뒤 저장합니다. 지금은 간단한 규칙으로 나누며, AI 분리는 다음 단계에서 붙입니다. 아래 칸에 직접 입력해도 됩니다.</p>
+  <textarea id="n-raw" rows="6">${LIVE?'':'안녕하세요 카톡으로 문의드려요. 이름은 박서연이고 연락처 010-5555-1234 입니다.\n작년 12월 5일에 쿠팡에서 산 신형뷰러 화이트인데 손잡이가 부러졌어요. 수거 부탁드립니다.\n주소는 경기 성남시 분당구 ○○로 12, 101동 202호'}</textarea>
+  <div class="acts" style="margin-top:8px"><button class="btn" id="n-parse">항목 나누기</button></div></div>
+  <div><h3>접수 항목 (확인 후 저장)</h3><div class="formgrid">
+   <label class="field">상담 인입경로<select id="n-inflow"><option>카카오톡</option><option>네이버</option><option>AS 신청서</option><option>현대홈쇼핑</option><option>전화</option></select></label>
+   <label class="field">세부 채널<input type="text" id="n-sub" value="채널 상담"></label>
+   <label class="field">고객명<input type="text" id="n-name"></label>
+   <label class="field">연락처<input type="text" id="n-phone"></label>
+   <label class="field">주소<input type="text" id="n-addr"></label>
+   <label class="field">제품 종류 (금액 기준)<select id="n-fam">${Object.keys(FEE).map(f=>`<option>${f}</option>`).join('')}</select></label>
+   <label class="field">제품명·색상<input type="text" id="n-product"></label>
+   <label class="field">구매처 (인입경로와 따로 기록)<input type="text" id="n-shop"></label>
+   <label class="field">구매일<input type="date" id="n-buy"></label>
+   <label class="field">증상<input type="text" id="n-sym"></label>
+  </div><div class="acts" style="margin-top:10px"><button class="btn" id="n-save">접수 저장 → 판정 칸으로</button></div></div></div>`;
+  $('n-parse').onclick=()=>{const t=$('n-raw').value;
+    const ph=t.match(/01\d[- ]?\d{3,4}[- ]?\d{4}/); if(ph)$('n-phone').value=ph[0];
+    const nm=t.match(/(?:이름은?|성함은?)\s*([가-힣]{2,4}?)(?:이고|입니다|이며|[\s,.])/); if(nm)$('n-name').value=nm[1];
+    const fam=Object.keys(FEE).find(f=>t.replace(/\s/g,'').includes(f.replace(/\s/g,''))); if(fam)$('n-fam').value=fam;
+    const shop=['쿠팡','네이버','자사몰','현대홈쇼핑','면세점','공구'].find(s=>t.includes(s)); if(shop)$('n-shop').value=shop;
+    const dm=t.match(/(\d{1,2})월\s*(\d{1,2})일/); if(dm){const y=NOW().getFullYear()-(t.includes('작년')?1:0);$('n-buy').value=`${y}-${p2(dm[1])}-${p2(dm[2])}`}
+    const ad=t.match(/주소[는은:\s]*([^\n]+)/); if(ad)$('n-addr').value=ad[1].trim();
+    if(t.includes('카톡')||t.includes('카카오'))$('n-inflow').value='카카오톡'; else if(t.includes('톡톡'))$('n-inflow').value='네이버';
+    const sy=t.match(/([가-힣\s]{2,14}(?:부러졌|안\s?돼|안\s?됩|깨졌|꺼[져집])[가-힣]*)/); if(sy)$('n-sym').value=sy[1].replace(/^.*인데\s*/,'').trim();
+    toast('항목을 나눴습니다. 확인 후 저장하세요')};
+  $('n-save').onclick=()=>{const g=id=>$(id).value.trim(); if(!g('n-name')) return toast('고객명을 넣어 주세요');
+    const hs=g('n-inflow')==='현대홈쇼핑';
+    const c=C({id:'NEW-'+Date.now(),inflow:g('n-inflow'),sub:g('n-sub'),recv:ts(),name:g('n-name'),phone:g('n-phone'),addr:g('n-addr'),fam:g('n-fam'),product:g('n-product')||g('n-fam'),buy:g('n-buy'),shop:g('n-shop')||'확인 안 됨',symptom:g('n-sym'),stage:'judge'});
+    if(!LIVE){const d=NOW();c.id=(hs?'HS-':'AS-')+p2(d.getMonth()+1)+p2(d.getDate())+'-'+p2(cases.length+1)}
+    log(c,'새 접수 등록'); cases.unshift(c); sel=c.id; cat=catOf(c); filt='todo'; q=''; persist(c); renderNew(); show('todo'); toast('접수했습니다 → 접수 확인·판정')};
+}
+
+/* ---------- 총괄 ---------- */
+function renderBoss(){
+  const n=f=>cases.filter(f).length, open=c=>!ST[c.stage].end;
+  const byOwn=o=>n(c=>{const t=task(c);return t.own===o&&!t.end&&!t.wait});
+  $('v-boss').innerHTML=`<div class="doc">
+  <div><h2>전체 현황 (일반 AS + 현대홈쇼핑)</h2><div class="kpi">
+    <div><b>${n(open)}</b><span>진행 중</span></div><div><b style="color:var(--red)">${n(c=>open(c)&&task(c).red)}</b><span>빨간 표시 (막힘·급함)</span></div>
+    <div><b>${n(c=>open(c)&&days(c.recv)>=7)}</b><span>접수 7일 넘음</span></div><div><b>${byOwn('상담')}</b><span>${esc(disp('상담'))}(상담) 할 일</span></div>
+    <div><b>${byOwn('창고')}</b><span>${esc(disp('창고'))}(창고) 할 일</span></div><div><b>${n(c=>c.stage==='hold')}</b><span>보류</span></div></div></div>
+  <div><h3>오래된 순 (진행 중)</h3><div class="tw"><table><thead><tr><th>접수</th><th>경과</th><th>해야 할 일</th><th>담당</th><th>고객</th><th>접수 건</th></tr></thead><tbody>
+   ${cases.filter(open).sort((a,b)=>pd(a.recv)-pd(b.recv)).slice(0,12).map(c=>{const t=task(c);return `<tr><td class="n">${sh(c.recv)}</td><td class="n">${days(c.recv)}일</td><td>${esc(t.todo)}</td><td>${esc(disp(t.own))}</td><td>${esc(c.name)}</td><td><button class="go" data-go="${esc(c.id)}">${esc(c.id)}</button></td></tr>`}).join('')||'<tr><td colspan="6">진행 중인 건이 없습니다.</td></tr>'}</tbody></table></div></div>
+  <div class="grid2">
+   <div class="card"><h3>연동 상태</h3><div class="tw"><table><tbody>
+    <tr><td>직원 로그인·공용 저장</td><td class="st ${LIVE?'':'off'}">${LIVE?'구글 계정 · 구글 시트 저장':'없음 (이 화면은 견본)'}</td></tr>
+    <tr><td>홈페이지 AS 접수폼</td><td class="st plan">다음 단계: 자동 수집</td></tr>
+    <tr><td>롯데택배 추적</td><td class="st off">미연동 (지금은 손으로 표시)</td></tr>
+    <tr><td>카카오톡·톡톡</td><td class="st plan">붙여넣기 접수 (AI 분리는 다음 단계)</td></tr>
+    <tr><td>문자 발송</td><td class="st off">미연동 (복사해서 발송)</td></tr></tbody></table></div></div>
+   <div class="card"><h3>저장·백업</h3><div class="tw"><table><tbody>
+    <tr><td>저장 위치</td><td class="st ${LIVE?'':'off'}">${LIVE?'대표님 구글 드라이브의 저장 시트':'없음'}</td></tr>
+    <tr><td>변경 기록</td><td class="st ${LIVE?'':'plan'}">${LIVE?'구글 시트 버전 기록 + 건별 이력':'설계'}</td></tr>
+    <tr><td>자동 백업 사본</td><td class="st plan">다음 단계: 매일 1회</td></tr>
+    <tr><td>복구 점검</td><td class="st plan">다음 단계: 월 1회</td></tr></tbody></table></div></div>
+  </div></div>`;
+}
+
+/* ---------- 설계 설명 ---------- */
+$('v-plan').innerHTML=`<div class="doc">
+<div><h2>이 초안의 생각</h2>
+<p>지금 시트는 <b>탭이 곧 상태</b>입니다. 건이 진행되면 사람이 행을 다른 탭으로 옮기고, 진행 내용은 자유롭게 적습니다. 새 설계는 한 건이 한 곳에 머물고 <b>상태만 바뀌며</b>, 상태가 바뀌면 다음 담당자의 할 일 목록에 자동으로 나타납니다.</p>
+<ul><li>맨 위 큰 분류는 <b>일반 AS</b>와 <b>현대홈쇼핑</b> 두 가지입니다.</li>
+<li>접수 건 카드마다 접수 일시, 수거까지 걸린 일수, 물건 위치, 8단계 중 어디에 있는지, 막힌 이유, 최근 이력이 보입니다.</li>
+<li>카드를 누르면 <b>할 일 / 물건·송장 / 접수 자료 / 안내문 / 이력</b> 탭이 열리고, 버튼을 누르면 다음 담당자에게 넘어갑니다.</li>
+<li>이력과 메모, 접수 자료는 수정할 수 있고, 수정한 사람과 시간이 남습니다.</li>
+<li>무상·유상 판정과 금액은 'AS 비용' 탭 기준으로 자동 계산하고, 안내문은 '문자양식' 탭 문구로 자동 완성합니다.</li></ul></div>
+
+<div><h2>지금 시트에서 확인한 것 (2026-11-17 조회)</h2><div class="tw"><table><thead><tr><th>확인한 사실</th><th>새 설계에서</th></tr></thead><tbody>
+<tr><td>'as' 탭 1,082건 중 806건은 진행사항이 빈칸. 2023년 건도 그대로 남아 있음</td><td>모든 건에 상태가 반드시 하나 있음. 2026년 6월 이전 접수 건은 이관 때 모두 종결 처리 (대표님 결정)</td></tr>
+<tr><td>진행사항 표기가 'as' 탭 180종, '처리완료' 탭 134종</td><td>상태 10개 중에서 고름. 나머지는 메모</td></tr>
+<tr><td>구입처 표기 149종 (엔젤루밍·앤젤루밍 등)</td><td>구매처 목록에서 선택, 없으면 추가</td></tr>
+<tr><td>유상 건의 입금 알림일이 '출고일자' 칸에 적힘</td><td>안내일·입금일·출고일 칸을 따로 둠</td></tr>
+<tr><td>'현대홈쇼핑반품' 탭은 열이 55개로 다른 탭과 구조가 다름</td><td>별도의 큰 분류로 분리. 주문번호·회수구분·개봉 여부를 전용 칸으로 보관</td></tr>
+<tr><td>듀얼 딥웨이브 유상 금액: 비용표 120,000원 / 문자양식 90,000원</td><td>김은진 님께 확인 필요 (지금은 90,000원으로 계산)</td></tr>
+<tr><td>신형뷰러 유상 AS는 2027년 1월까지 접수 불가로 안내 중</td><td>판정 단계에서 자동으로 '접수 불가' 표시와 안내문 제시</td></tr></tbody></table></div></div>
+
+<div><h2>자동으로 올라오는 표시</h2><ul>
+<li>수거 실패 → 김은진(상담)에게 '재수거 확인'</li>
+<li>수거 접수 뒤 3일째 수거 기록 없음 → '수거 확인'</li>
+<li>수거 뒤 48시간 이동 없음 → '배송 확인'</li>
+<li>창고 도착 → 최미영 실장(창고)에게 '개봉·검사 필요' (빨강)</li>
+<li>검사 결과 저장 → 김은진(상담)에게 '고객 안내 필요' (빨강). 기한은 창고 확인 시각부터 2영업일(주말 제외)</li>
+<li>비용 안내 뒤 3일 입금 없음 → '입금 재안내'</li>
+<li>담당자가 확인 버튼을 누른 표시만 꺼지고, 이력에 남습니다</li></ul></div>
+
+<div><h2>수거 확정 뒤 물건 상태</h2>
+<div class="tw"><table><thead><tr><th>물건 상태</th><th>무엇으로 바뀌나</th><th>화면 표시</th></tr></thead><tbody>
+<tr><td>고객 보관</td><td>수거 접수 (송장 등록)</td><td>접수 N일째 · 수거 전. 3일 넘으면 노란색, 경고</td></tr>
+<tr><td>수거 완료 (수거 확정)</td><td>택배 '집화' 기록 (연동 전에는 '수거됨' 버튼)</td><td>'접수 N일 만에 수거'가 건마다 남음</td></tr>
+<tr><td>이동 중</td><td>택배 조회 자동 확인 (제안: 1시간마다)</td><td>지금 위치. 48시간 기록 없으면 빨간색</td></tr>
+<tr><td>창고</td><td>택배 '배송 완료' 기록 또는 '창고 도착' 버튼</td><td>검사 기다림 / 고객 안내 기다림 / 입금 기다림 / 출고 준비</td></tr>
+<tr><td>출고·배송 중</td><td>출고 송장 등록</td><td>지금 위치</td></tr>
+<tr><td>고객 수령</td><td>택배 '배송 완료' 기록 또는 '고객 수령 확인' 버튼</td><td>접수부터 수령까지 걸린 일수</td></tr></tbody></table></div></div>
+
+<div><h2>만드는 순서</h2><ol>
+<li><b>구글 로그인 + 공용 저장</b>: 직원이 같은 자료를 보고 버튼으로 넘기기. 접수는 손 입력과 붙여넣기. (지금 세팅 중)</li>
+<li><b>기존 시트 시험 이관</b>: 원본은 그대로 두고 2026년 6월 이후 진행 건만 새 판으로 옮겨 보고, 안 맞는 건 목록을 대표님께 보여드림.</li>
+<li><b>접수폼 자동 수집 + AI 항목 분리</b></li>
+<li><b>롯데택배 추적 연동</b>: 수거 실패·48시간·도착 자동 표시.</li>
+<li><b>문자 발송 연동, 자동 백업·복구 점검</b></li></ol></div>
+
+<div><h2>정해진 것과 남은 것</h2><ol>
+<li><b>결정됨:</b> 상담 김은진 님, 창고 최미영 실장님. 대체 담당자는 미정.</li>
+<li><b>결정됨:</b> 2026년 6월 이전 접수 건은 모두 종결로 이관.</li>
+<li><b>결정됨:</b> 고객 안내 기한은 창고 확인 뒤 2영업일.</li>
+<li><b>결정됨:</b> 현대홈쇼핑은 별도의 큰 분류. 전용 단계는 다음 수정에서 설계.</li>
+<li><b>결정됨:</b> 직원 로그인은 구글 계정.</li>
+<li>확인 필요: 듀얼 딥웨이브 유상 금액 (김은진 님), 입금 재안내 3일·배송 확인 48시간·수거 지연 3일 기준.</li></ol></div></div>`;
+
+/* ---------- 저장 (실제 운영) ---------- */
+const saving=new Map(); // 건마다 저장을 한 번에 하나씩 보낸다 (연달아 눌러도 순서가 꼬이지 않게)
+function persist(c){
+  if(!LIVE) return;
+  if(saving.get(c)){saving.set(c,'again');return}
+  saving.set(c,'now');
+  const wasNew=String(c.id).startsWith('NEW-'), tmp=c.id;
+  google.script.run.withSuccessHandler(r=>{c.rev=r.rev; if(wasNew){c.id=r.id; if(sel===tmp) sel=r.id; refresh()}
+      const again=saving.get(c)==='again'; saving.delete(c); if(again) persist(c)})
+    .withFailureHandler(e=>{saving.clear(); toast('저장하지 못했습니다: '+(e&&e.message||e)+' · 최신 자료를 다시 불러옵니다'); reload()})
+    .saveCase(JSON.stringify(c));
+}
+function reload(){
+  if(!LIVE||saving.size) return;
+  google.script.run.withSuccessHandler(list=>{cases=list.map(s=>C(JSON.parse(s)));
+    const busy=document.activeElement&&$('detail').contains(document.activeElement)&&/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName);
+    renderStrip();renderList(); if(!busy) renderDetail(); if(!$('v-boss').hidden)renderBoss(); if(!$('v-trk').hidden)renderTrk()}).getCases();
+}
+function boot(){
+  if(!LIVE){renderNew();refresh(); if(window.matchMedia('(min-width:901px)').matches){sel=visible()[0]?.id||null;refresh()} return}
+  $('badge').textContent='자료를 불러오는 중…';
+  $('meBox').hidden=true; document.querySelector('#tabs [data-v="plan"]').hidden=true;
+  google.script.run.withSuccessHandler(r=>{
+    USER=r.user; SETTINGS=r.settings||SETTINGS; if(r.roleNames) ROLE_NAME=Object.assign(ROLE_NAME,r.roleNames);
+    cases=r.cases.map(s=>C(JSON.parse(s)));
+    $('badge').textContent='실제 자료 · 누르면 바로 저장'; $('badge').className='proto live';
+    $('meLive').hidden=false; $('meLive').textContent=USER.name+' ('+USER.role+') · '+USER.email;
+    document.querySelectorAll('#ownerSeg button').forEach(b=>{if(b.dataset.o!=='all') b.textContent=disp(b.dataset.o)+'('+b.dataset.o+')'});
+    renderNew(); refresh(); setInterval(reload,60000);
+  }).withFailureHandler(e=>{document.querySelector('.wrap').innerHTML='<div class="doc"><h2>들어올 수 없습니다</h2><p>'+esc(e&&e.message||e)+'</p><p>대표님께 구글 계정 등록을 요청해 주세요.</p></div>'}).boot();
+}
+
+/* ---------- 화면 전환·이벤트 ---------- */
+function show(v){['todo','trk','new','boss','plan'].forEach(k=>$('v-'+k).hidden=k!==v);
+  document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.v===v));
+  if(v==='trk')renderTrk(); if(v==='boss')renderBoss(); if(v==='todo')refresh()}
+function openCase(id){sel=id;dtab='do';editH=-1;editInfo=false;q=id;$('q').value=id;show('todo')}
+$('tabs').onclick=e=>{const b=e.target.closest('button');if(b)show(b.dataset.v)};
+$('catSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;cat=b.dataset.c;filt='todo';q='';$('q').value='';sel=null;show('todo')};
+$('strip').onclick=e=>{const b=e.target.closest('button');if(!b)return;filt=b.dataset.f;q='';$('q').value='';refresh()};
+$('ownerSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;owner=b.dataset.o;document.querySelectorAll('#ownerSeg button').forEach(x=>x.setAttribute('aria-pressed',x===b));refresh()};
+$('q').oninput=e=>{q=e.target.value.trim();renderStrip();renderList()};
+const pick=r=>{sel=r.dataset.id;dtab='do';editH=-1;editInfo=false;refresh()};
+$('list').onclick=e=>{const r=e.target.closest('.row');if(r)pick(r)};
+$('list').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){const r=e.target.closest('.row');if(r){e.preventDefault();pick(r)}}};
+$('detail').onclick=e=>{const t=e.target.closest('[data-dt]');if(t){dtab=t.dataset.dt;editH=-1;editInfo=false;return renderDetail()}const b=e.target.closest('[data-a]');if(b)act(b.dataset.a,b)};
+$('v-trk').onclick=e=>{const b=e.target.closest('[data-go]');if(b)openCase(b.dataset.go)};
+$('v-boss').onclick=e=>{const b=e.target.closest('[data-go]');if(b)openCase(b.dataset.go)};
+boot();
+</script>

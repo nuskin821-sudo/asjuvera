@@ -685,15 +685,19 @@ $('v-plan').innerHTML=`<div class="doc">
 <li>확인 필요: 듀얼 딥웨이브 유상 금액 (김은진 님), 입금 재안내 3일·배송 확인 48시간·수거 지연 3일 기준.</li></ol></div></div>`;
 
 /* ---------- 저장 (실제 운영) ---------- */
+const saving=new Map(); // 건마다 저장을 한 번에 하나씩 보낸다 (연달아 눌러도 순서가 꼬이지 않게)
 function persist(c){
   if(!LIVE) return;
+  if(saving.get(c)){saving.set(c,'again');return}
+  saving.set(c,'now');
   const wasNew=String(c.id).startsWith('NEW-'), tmp=c.id;
-  google.script.run.withSuccessHandler(r=>{c.rev=r.rev; if(wasNew){c.id=r.id; if(sel===tmp) sel=r.id; refresh()}})
-    .withFailureHandler(e=>{toast('저장하지 못했습니다: '+(e&&e.message||e)+' · 최신 자료를 다시 불러옵니다'); reload()})
+  google.script.run.withSuccessHandler(r=>{c.rev=r.rev; if(wasNew){c.id=r.id; if(sel===tmp) sel=r.id; refresh()}
+      const again=saving.get(c)==='again'; saving.delete(c); if(again) persist(c)})
+    .withFailureHandler(e=>{saving.clear(); toast('저장하지 못했습니다: '+(e&&e.message||e)+' · 최신 자료를 다시 불러옵니다'); reload()})
     .saveCase(JSON.stringify(c));
 }
 function reload(){
-  if(!LIVE) return;
+  if(!LIVE||saving.size) return;
   google.script.run.withSuccessHandler(list=>{cases=list.map(s=>C(JSON.parse(s)));
     const busy=document.activeElement&&$('detail').contains(document.activeElement)&&/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName);
     renderStrip();renderList(); if(!busy) renderDetail(); if(!$('v-boss').hidden)renderBoss(); if(!$('v-trk').hidden)renderTrk()}).getCases();
