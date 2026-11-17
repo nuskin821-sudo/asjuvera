@@ -68,7 +68,7 @@ textarea{width:100%;resize:vertical}
 .row>.full{grid-column:1/-1;min-width:0}
 .path{display:flex;flex-wrap:wrap;gap:2px 6px;align-items:center;font-size:14px;min-width:0}
 .path i{font-style:normal;color:var(--sub)}
-.path .todo{font-weight:700;font-size:15px}
+.path .todo{font-weight:700;font-size:17px}
 .row.urgent .todo{color:var(--red)}
 .when{font-weight:700;font-variant-numeric:tabular-nums}
 .who{font-size:12.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--soft);white-space:nowrap;align-self:center}
@@ -410,15 +410,13 @@ function renderStrip(){
 function renderList(){
   const v=visible();
   $('list').innerHTML=v.length?v.map(c=>{const t=task(c);const oc=t.own==='상담'?'c':t.own==='창고'?'w':t.own==='자동'?'a':'';
-    const h=c.hist[c.hist.length-1];
+    const u=dueInfo(c), why=t.alert?t.alert.x:(u&&u.left<=0?u.txt:'');
     return `<div class="row ${t.red?'urgent':''} ${sel===c.id?'sel':''}" role="button" tabindex="0" data-id="${esc(c.id)}">
-      <span class="path"><span class="when">${sh(c.recv)} 접수</span><i>›</i><span>${esc(c.inflow)}</span><i>›</i><span>${esc(c.sub)}</span><i>›</i><span class="todo">${esc(t.todo)}</span></span>
+      <span class="path"><span class="todo">${esc(t.todo)}</span></span>
       <span class="who ${oc}">${esc(disp(t.own))}</span>
-      <span class="meta full"><b>${esc(c.name)}</b> · ${esc(c.product)} · ${esc(c.symptom)}</span>
-      <span class="pills full">${duePill(c)}${pkPill(c)}${goodsPill(c)}</span>
       <span class="full">${stepBar(c)}</span>
-      ${t.alert?`<span class="meta full" style="color:var(--red);font-weight:600">막힌 이유: ${esc(t.alert.x)}</span>`:''}
-      <span class="last full">이력 ${c.hist.length}건${h?` · 최근 <b>${sh(h.t)} ${esc(h.who)}</b> · ${esc(h.x)}`:''}</span></div>`}).join('')
+      ${why?`<span class="meta full" style="color:var(--red);font-weight:600">${esc(why)}</span>`:''}
+      <span class="meta full"><span class="when">${sh(c.recv)} 접수</span> · ${esc(c.inflow)} · <b>${esc(c.name)}</b></span></div>`}).join('')
    :`<div class="empty">${q?'검색 결과가 없습니다.':'이 칸에는 지금 할 일이 없습니다.'}</div>`;
 }
 
@@ -636,7 +634,7 @@ $('v-plan').innerHTML=`<div class="doc">
 <div><h2>이 초안의 생각</h2>
 <p>지금 시트는 <b>탭이 곧 상태</b>입니다. 건이 진행되면 사람이 행을 다른 탭으로 옮기고, 진행 내용은 자유롭게 적습니다. 새 설계는 한 건이 한 곳에 머물고 <b>상태만 바뀌며</b>, 상태가 바뀌면 다음 담당자의 할 일 목록에 자동으로 나타납니다.</p>
 <ul><li>맨 위 큰 분류는 <b>일반 AS</b>와 <b>현대홈쇼핑</b> 두 가지입니다.</li>
-<li>접수 건 카드마다 접수 일시, 수거까지 걸린 일수, 물건 위치, 8단계 중 어디에 있는지, 막힌 이유, 최근 이력이 보입니다.</li>
+<li>접수 건 카드에는 필요한 것만 둡니다: 맨 위에 해야 할 일, 그 아래 전체 흐름(8단계)과 막힌 곳, 막힌 이유, 접수 일시·경로·고객명. 수거 일수·물건 위치·이력 같은 자세한 정보는 카드를 누르면 나옵니다. 처리하면 그 카드는 뒤로 밀리거나 다음 담당자 목록으로 넘어갑니다.</li>
 <li>카드를 누르면 <b>할 일 / 물건·송장 / 접수 자료 / 안내문 / 이력</b> 탭이 열리고, 버튼을 누르면 다음 담당자에게 넘어갑니다.</li>
 <li>이력과 메모, 접수 자료는 수정할 수 있고, 수정한 사람과 시간이 남습니다.</li>
 <li>무상·유상 판정과 금액은 'AS 비용' 탭 기준으로 자동 계산하고, 안내문은 '문자양식' 탭 문구로 자동 완성합니다.</li></ul></div>
