@@ -17,7 +17,7 @@ const TAB_STAFF = '직원', TAB_SET = '설정';
 const NCOL = 23, COL_ID = 22, COL_JSON = 23;   // V, W
 // 열 순서(0부터): 접수일자, 신청일자, 성함, 연락처, 주소, 제품명, 구매일자, 구입처, A/S 사유, 회수여부, 문자안내, 진행사항, 출고일자, 송장번호, 비고
 const I = { date: 0, applied: 1, name: 2, phone: 3, addr: 4, product: 5, buy: 6, shop: 7, symptom: 8, k: 9, m: 10, prog: 11, out: 12, track: 13, note: 14 };
-const FAIL_WORDS = ['수거안됨', '수거 안됨', '집화안됨', '집화 안됨', '집하안됨', '재수거'];
+const FAIL_WORDS = ['수거안됨', '수거 안됨', '수거 안되', '집화안됨', '집화 안됨', '집하안됨', '집하 안됨', '재수거'];
 
 function doGet() {
   return HtmlService.createHtmlOutputFromFile('index').setTitle('쥬베라 AS 업무판')
@@ -77,14 +77,22 @@ function has_(s, words) { for (let i = 0; i < words.length; i++) if (String(s).i
 function derive_(tab, v) {
   const k = v[I.k], m = v[I.m], prog = v[I.prog];
   if (tab === '수거완료') return { stage: 'inspect' };
-  if (tab === '유상AS입금대기') return { stage: 'pay' };
-  if (tab === '출고예정') return { stage: 'ship' };
+  if (tab === '유상AS입금대기') { // 고객이 유상 진행을 안 하기로 한 건은 제품 처리(반송·폐기) 확인이 남은 것
+    if (has_(prog, ['안함', '안 함', '안한다', '폐기'])) return { stage: 'hold', unknown: true };
+    if (!k && !m) return { stage: 'hold', unknown: true };
+    return { stage: 'pay' };
+  }
+  if (tab === '출고예정') return { stage: has_(prog, ['출고완료', '발송완료']) ? 'done' : 'ship' };
   if (tab === '보류') return { stage: 'hold' };
   if (tab === DONE_TAB) return { stage: 'done' };
   // 'as' 탭
-  if (has_(prog, ['유상AS 안됨', '유상AS 안된', '취소', '중복', '구매 링크'])) return { stage: 'closed' };
+  if (has_(v[I.note], ['취소']) || has_(prog, ['출고됨'])) return { stage: 'closed' };   // 비고에 취소라고 적힌 건, 이미 새 제품이 나간 건
+  if (has_(prog, ['사무실 배송완료'])) return { stage: 'inspect' };   // 제품이 사무실에 도착함
+  if (has_(prog, ['교환철회', '교환취소'])) return { stage: 'closed' };
   if (has_(prog, FAIL_WORDS)) return { stage: 'transit', fail: true };
-  if (has_(prog, ['상담중', '상담 중', '보류', '요망', '확인'])) return { stage: 'hold' };
+  if (has_(prog, ['상담중', '상담 중'])) return { stage: 'hold' };
+  if (has_(prog, ['유상AS 안됨', '유상AS 안된', '취소', '중복', '구매 링크'])) return { stage: 'closed' };
+  if (has_(prog, ['보류', '요망', '확인'])) return { stage: 'hold' };
   if (!k && !m) return { stage: 'judge', unknown: !!prog };
   if (m !== '안내완료') return { stage: 'pickup', unknown: !!prog };
   return { stage: 'transit', method: k === '제품 발송안내 필요' ? '고객발송' : '수거', unknown: !!prog };

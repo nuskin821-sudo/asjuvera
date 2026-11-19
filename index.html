@@ -216,13 +216,14 @@ td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
 /* 실제 운영(구글 로그인)에서는 google.script.run 이 있고, 견본 화면에서는 없다 */
 const LIVE=!!(window.google&&google.script&&google.script.run);
 const SAMPLE_NOW=new Date('2026-11-17T14:00:00');
-const NOW=()=>LIVE?new Date():SAMPLE_NOW;
+const SNAP=window.AS_SNAPSHOT||null; // 시트 수집본(보기용)
+const NOW=()=>LIVE?new Date():SNAP?new Date(SNAP.at.replace(' ','T')):SAMPLE_NOW;
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const $=id=>document.getElementById(id);
 const p2=n=>String(n).padStart(2,'0');
 const pd=s=>new Date(String(s).replace(' ','T'));                 // 'YYYY-MM-DD HH:MM' → 날짜
 const iso=d=>d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());
-const ts=()=>{const d=LIVE?new Date():new Date(SAMPLE_NOW.getFullYear(),SAMPLE_NOW.getMonth(),SAMPLE_NOW.getDate(),new Date().getHours(),new Date().getMinutes());return iso(d)+' '+p2(d.getHours())+':'+p2(d.getMinutes())};
+const ts=()=>{const B=NOW();const d=LIVE?new Date():new Date(B.getFullYear(),B.getMonth(),B.getDate(),new Date().getHours(),new Date().getMinutes());return iso(d)+' '+p2(d.getHours())+':'+p2(d.getMinutes())};
 const md=s=>{const d=pd(s);return (d.getMonth()+1)+'/'+d.getDate()};
 const sh=s=>{const d=pd(s);return md(s)+(String(s).length>10?' '+p2(d.getHours())+':'+p2(d.getMinutes()):'')};
 const day0=d=>new Date(d.getFullYear(),d.getMonth(),d.getDate());
@@ -282,7 +283,7 @@ function sampleCases(){
  S({id:'HS-1113-03',inflow:'현대홈쇼핑',sub:'반품회수',recv:'11/13 01:07',name:'김○전',phone:'010-****-9500',fam:'베이직 미니',product:'베이직 미니 마사지기',buy:'2026-11-01',shop:'현대홈쇼핑 (TV)',symptom:'반품 · 변심 · 주문 20261101-******',stage:'transit',inTrack:'2688-3699-****'},[['11/13 01:07','자동','현대홈쇼핑 회수요청 목록에서 들어옴']],[['11/13 01:07','book','수거 예약','용인기흥']])
  ];
 }
-let cases=LIVE?[]:sampleCases();
+let cases=LIVE?[]:SNAP?SNAP.cases.map(C):sampleCases();
 
 /* ---------- 판정·경고·상태 계산 ---------- */
 function warranty(c){
@@ -706,6 +707,7 @@ function reload(){
     renderStrip();renderList(); if(!busy) renderDetail(); if(!$('v-boss').hidden)renderBoss(); if(!$('v-trk').hidden)renderTrk()}).getCases();
 }
 function boot(){
+  if(SNAP){$('badge').textContent='시트 수집본 · '+sh(SNAP.at)+' 기준 · 보기용 (여기서 누른 것은 시트에 저장되지 않음)';$('meBox').hidden=true}
   if(!LIVE){renderNew();refresh(); if(window.matchMedia('(min-width:901px)').matches){sel=visible()[0]?.id||null;refresh()} return}
   $('badge').textContent='자료를 불러오는 중…';
   $('meBox').hidden=true; document.querySelector('#tabs [data-v="plan"]').hidden=true;
