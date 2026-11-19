@@ -294,6 +294,7 @@ function warranty(c){
   return {k:'paid',label:'유상 ('+(y<2?'1~2년':'2년 이후')+')',fee:y<2?f[0]:f[1]};
 }
 function alertOf(c){
+  if(c.hsTodo) return null; // 현대홈쇼핑 건은 시트 상세 칸 기준으로 따로 판단
   if(c.alert) return c.alert;
   if(c.stage==='transit'){
     const l=c.tin[c.tin.length-1];
@@ -306,6 +307,7 @@ function alertOf(c){
 }
 function task(c){
   const s=ST[c.stage], a=alertOf(c);
+  if(c.hsTodo&&!s.end) return {todo:c.hsTodo,own:c.hsOwn||'상담',red:!!c.hsRed,wait:!!c.hsWait,end:false,alert:c.hsWhy?{type:'hs',x:c.hsWhy}:null};
   if(a) return {todo:ALERT[a.type],own:'상담',red:1,wait:0,alert:a};
   return {todo:s.todo,own:s.own,red:!!s.red,wait:!!s.wait,end:!!s.end};
 }

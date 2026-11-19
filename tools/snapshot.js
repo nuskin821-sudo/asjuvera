@@ -10,6 +10,7 @@ const mask = n => { n = String(n || '').trim().split(/\s+/)[0]; return n.length 
 const clean = (s, n) => String(s || '').replace(/\d[\d\- ]{6,}\d/g, '***').replace(/\s+/g, ' ').trim().slice(0, n);
 const cases = [], ids = {}, stats = {};
 for (const a of tabArgs) {
+  if (a.startsWith('hs=')) { const l = JSON.parse(fs.readFileSync(a.slice(3), 'utf8')); l.forEach(c => cases.push(c)); stats['현대홈쇼핑반품'] = l.length; continue; }
   const [tab, rest] = a.split('='); const [file] = rest.split(':');
   const rows = JSON.parse(fs.readFileSync(file, 'utf8')).values || [];
   const done = tab === G.DONE_TAB;
