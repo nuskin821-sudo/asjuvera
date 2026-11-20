@@ -80,6 +80,9 @@ textarea{width:100%;resize:vertical}
 .pills{display:flex;flex-wrap:wrap;gap:4px}
 .last{font-size:13px;color:var(--sub);border-top:1px dashed var(--line);padding-top:6px;overflow-wrap:anywhere}
 .last b{color:var(--ink);font-weight:500}
+.pri,.kind{display:inline-block;font-size:12px;font-weight:700;padding:1px 7px;border-radius:4px;margin-right:4px}
+.pri.P1{background:var(--red);color:var(--panel)}.pri.P2{background:var(--red-soft);color:var(--red)}.pri.P3{background:var(--soft);color:var(--ink)}.pri.P4{background:var(--soft);color:var(--sub)}
+.kind{background:var(--accent-soft);color:var(--accent)}
 .empty{padding:28px;text-align:center;color:var(--sub);border:1px dashed var(--line);border-radius:8px}
 .trk,.pk{display:inline-block;font-size:12px;font-weight:700;padding:1px 7px;border-radius:4px}
 .trk{background:var(--accent-soft);color:var(--accent)}
@@ -380,6 +383,23 @@ const TPL={
  out:c=>`(주)쥬베라 AS [발신전용]\n안녕하세요 고객님 A/S 접수해 주신 쥬베라입니다.\n상품 회수 및 확인 완료되어 오늘 출고되었습니다.\n송장번호 : ${c.outTrack||'(출고 송장 입력 시 자동)'}\n평일 기준으로 2~3일 내에 배송 예정이오니 참고하여 주세요.`
 };
 
+/* ---------- AS 분류 (고장 종류 · 급한 정도) ---------- */
+const KINDS=[['반품(변심)',/변심|충동구매|단순|주문오류|유사상품|이미지차이|가격부담|미사용|개봉전|반품요청\(문의\)|배송지오류|기출하|사이즈/],['구성품',/구성품/],['전극헤드 탈락',/헤드|핀|부품.?(탈락|빠)|금속|롤러|전극/],['손잡이·본체 파손',/손잡이|집게|부러|금이|금 가|깨|파손|벌어|경첩|찝|집히|집어|고무|눈썹|간격/],['온열 불량',/온열|히팅|열이|뜨거|온도|발열/],['배터리·충전',/충전|배터리|방전|꺼짐|꺼져|꺼지|완충|전원/],['불 깜빡임·작동 오류',/파란불|깜빡|깜박|불빛|작동.?안|작동불량|먹통/],['모터·진동',/모터|진동|솔이|소음/],['사양·효과 불만',/효과|사양|불만|아프|힘이 없|복잡/]];
+const ESC=/환불해|환불 요|당장 환불|화나|어이없|황당|또 고장|재발|세 번|3번째|소비자원|민원|유상AS 안됨 불만|불만\)/;
+function triage(c){
+  const txt=[c.symptom,c.inspect,c.sheetMemo,c.sheetProg].join(' ');
+  const k=(KINDS.find(([,re])=>re.test(txt))||['기타'])[0];
+  const t=task(c), u=dueInfo(c); let p;
+  if(ST[c.stage].end) p='P4';
+  else if((ESC.test([c.symptom,c.sheetProg].join(' '))||/고객 문의|AS처리 확인|게시판/.test(t.todo))&&!t.wait) p='P1';
+  else if(t.red||(u&&u.left<=0)) p='P2';
+  else if(t.wait||c.stage==='hold') p='P4';
+  else p='P3';
+  return {kind:k,p,esc:ESC.test(c.symptom||'')};
+}
+const PLAB={P1:'P1 급함·불만',P2:'P2 막힘',P3:'P3 보통',P4:'P4 기다림'};
+const triPill=c=>{const r=triage(c);return `<span class="pri ${r.p}">${PLAB[r.p]}</span><span class="kind">${esc(r.kind)}</span>`};
+
 /* ---------- 화면 상태 ---------- */
 let filt='todo', owner='all', sel=null, q='', dtab='do', cat='as', editH=-1, editInfo=false;
 const Hd=k=>dtab===k?'':'hidden';
@@ -403,7 +423,8 @@ function visible(){
   else if(filt==='done') v=v.filter(c=>c.stage==='done'||c.stage==='closed');
   else v=v.filter(c=>inGroup(c,filt));
   if(owner!=='all') v=v.filter(c=>task(c).own===owner);
-  return v.slice().sort((a,b)=>(task(b).red-task(a).red)||(pd(a.recv)-pd(b.recv)));
+  const pr=c=>({P1:0,P2:1,P3:2,P4:3})[triage(c).p];
+  return v.slice().sort((a,b)=>(pr(a)-pr(b))||(task(b).red-task(a).red)||(pd(a.recv)-pd(b.recv)));
 }
 function renderStrip(){
   const open=k=>cases.filter(c=>catOf(c)===k&&!ST[c.stage].end).length;
@@ -423,7 +444,7 @@ function renderList(){
       <span class="who ${oc}">${esc(disp(t.own))}</span>
       <span class="full">${stepBar(c)}</span>
       ${why?`<span class="meta full" style="color:var(--red);font-weight:600">${esc(why)}</span>`:''}
-      <span class="meta full"><span class="when">${sh(c.recv)} 접수</span> · ${esc(c.inflow)} · <b>${esc(c.name)}</b></span></div>`}).join('')
+      <span class="meta full">${triPill(c)}<span class="when">${sh(c.recv)} 접수</span> · ${esc(c.inflow)} · <b>${esc(c.name)}</b></span></div>`}).join('')
    :`<div class="empty">${q?'검색 결과가 없습니다.':'이 칸에는 지금 할 일이 없습니다.'}</div>`;
 }
 
@@ -472,6 +493,7 @@ function nextBox(c){
   return `<div class="next ${t.red?'urgent':''}"><span class="lab">지금 해야 할 일 · ${esc(disp(t.own))}</span><span class="big">${esc(t.todo)}</span>${body}<div class="acts">${acts}</div></div>`;
 }
 function msgFor(c){
+  if(c.draft) return ['답변 초안 (보내기 전 확인)',c.draft];
   const w=warranty(c);
   if(c.stage==='judge'&&w.k==='paid'&&BLOCKED[c.fam]) return ['유상 AS 접수 불가 안내',TPL.blocked(c)];
   if(c.stage==='pickup'||c.stage==='transit') return ['수거 안내',TPL.pickup(c)];
@@ -518,7 +540,7 @@ function renderDetail(){
   d.hidden=false; const m=msgFor(c);
   d.innerHTML=`<div class="dhead"><div><h2>${esc(c.name)} <small>${esc(c.phone)}</small></h2><small>${esc(c.id)} · ${esc(c.inflow)} › ${esc(c.sub)} · ${sh(c.recv)} 접수</small></div><button class="close" data-a="x">닫기</button></div>
   <div class="dtabs" role="tablist">${[['do','할 일'],['trk','물건·송장'],['info','접수 자료'],['msg','안내문'],['hist','이력 '+c.hist.length]].map(([k,l])=>`<button role="tab" data-dt="${k}" aria-selected="${dtab===k}">${l}</button>`).join('')}</div>
-  <div class="dpane" ${Hd('do')}>${nextBox(c)}<div class="pills">${duePill(c)}${pkPill(c)}${goodsPill(c)}</div>${stepBar(c)}
+  <div class="dpane" ${Hd('do')}>${nextBox(c)}<div class="pills">${triPill(c)}${duePill(c)}${pkPill(c)}${goodsPill(c)}</div>${stepBar(c)}
     <div><h3>최근 이력·메모</h3>${dtab==='do'?histList(c,3):''}<div class="memo" style="margin-top:8px"><input type="text" id="f-memo" placeholder="메모 남기기 (통화 내용 등)"><button class="btn ghost" data-a="memo">남기기</button></div></div></div>
   <div class="dpane" ${Hd('trk')}>${liveBlock(c)}${trkBlock(c,'out')}${trkBlock(c,'in')}</div>
   <div class="dpane" ${Hd('info')}>${infoPane(c)}</div>
@@ -622,6 +644,7 @@ function renderBoss(){
     <div><b>${byOwn('창고')}</b><span>${esc(disp('창고'))}(창고) 할 일</span></div><div><b>${n(c=>c.stage==='hold')}</b><span>보류</span></div></div></div>
   <div><h3>오래된 순 (진행 중)</h3><div class="tw"><table><thead><tr><th>접수</th><th>경과</th><th>해야 할 일</th><th>담당</th><th>고객</th><th>접수 건</th></tr></thead><tbody>
    ${cases.filter(open).sort((a,b)=>pd(a.recv)-pd(b.recv)).slice(0,12).map(c=>{const t=task(c);return `<tr><td class="n">${sh(c.recv)}</td><td class="n">${days(c.recv)}일</td><td>${esc(t.todo)}</td><td>${esc(disp(t.own))}</td><td>${esc(c.name)}</td><td><button class="go" data-go="${esc(c.id)}">${esc(c.id)}</button></td></tr>`}).join('')||'<tr><td colspan="6">진행 중인 건이 없습니다.</td></tr>'}</tbody></table></div></div>
+  <div><h3>반복 고장 (최근 60일, 제품 × 고장 종류, 반품 변심 제외)</h3>${repeatTable()}</div>
   <div class="grid2">
    <div class="card"><h3>연동 상태</h3><div class="tw"><table><tbody>
     <tr><td>직원 로그인·공용 저장</td><td class="st ${LIVE?'':'off'}">${LIVE?'구글 계정 · 구글 시트 저장':'없음 (이 화면은 견본)'}</td></tr>
@@ -636,6 +659,13 @@ function renderBoss(){
     <tr><td>복구 점검</td><td class="st plan">다음 단계: 월 1회</td></tr></tbody></table></div></div>
   </div></div>`;
 }
+
+function repeats(){
+  const m={}; cases.filter(c=>days(c.recv)<=60&&c.inflow!=='자사몰 게시판').forEach(c=>{const k=triage(c).kind; if(k==='반품(변심)'||k==='기타') return; const key=(c.fam||'기타')+' · '+k; (m[key]=m[key]||{n:0,open:0,fam:c.fam,kind:k}).n++; if(!ST[c.stage].end) m[key].open++});
+  return Object.entries(m).sort((a,b)=>b[1].n-a[1].n);
+}
+function repeatTable(){const r=repeats().slice(0,10);
+  return r.length?`<div class="tw"><table><thead><tr><th>제품 · 고장</th><th>건수</th><th>진행 중</th><th>판단</th></tr></thead><tbody>${r.map(([k,v])=>`<tr><td>${esc(k)}</td><td class="n">${v.n}</td><td class="n">${v.open}</td><td>${v.n>=5?'<span class="pri P2">반복 · 제품개발 공유</span>':v.n>=3?'<span class="pri P3">지켜보기</span>':''}</td></tr>`).join('')}</tbody></table></div>`:'<p>자료 없음</p>'}
 
 /* ---------- 설계 설명 ---------- */
 $('v-plan').innerHTML=`<div class="doc">
