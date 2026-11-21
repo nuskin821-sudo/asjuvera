@@ -19,5 +19,5 @@ node "$T/hspartner.js" "$D/tower/tower/as_hyundai.json" "$D/hs-cases.json" > "$D
 node "$T/cafe24.js" "$D/cafe24.json" > "$D/cafe24-cases.json" 2>"$D/c24.log"
 node "$T/snapshot.js" /home/user/juvera-as-board.html /home/user/as-board-snapshot.html "$AT" \
   "as=$D/as.json" "수거완료=$D/sugo.json" "출고예정=$D/ship.json" "유상AS입금대기=$D/pay.json" "보류=$D/hold.json" "처리완료=$D/done.json" \
-  "hs=$D/hs-cases.json" "hs=$D/hsp-cases.json" "hs=$D/cafe24-cases.json"
+  "hs=$D/hs-cases.json" "hs=$D/hsp-cases.json" "hs=$D/cafe24-cases.json" ${REPORTS:+"reports=$REPORTS"}
 cat "$D/hsp.log" "$D/c24.log"

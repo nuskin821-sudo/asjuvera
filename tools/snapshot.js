@@ -9,7 +9,9 @@ const G = new Function(...Object.keys(stub), src + ';return {toCase_,date_,I,CUT
 const mask = n => { n = String(n || '').trim().split(/\s+/)[0]; return n.length <= 1 ? n : n.length === 2 ? n[0] + '○' : n[0] + '○'.repeat(n.length - 2) + n[n.length - 1]; };
 const clean = (s, n) => String(s || '').replace(/\d[\d\- ]{6,}\d/g, '***').replace(/\s+/g, ' ').trim().slice(0, n);
 const cases = [], ids = {}, stats = {};
+let reports = [];
 for (const a of tabArgs) {
+  if (a.startsWith('reports=')) { const dir = a.slice(8); reports = fs.readdirSync(dir).filter(f => f.endsWith('.json')).map(f => { const d = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')); const x = d.data || d; return { id: f.replace(/\.json$/, ''), title: x.title, at: x.at, status: x.status, reply: x.reply || '', body: x.body || '', update: x.update || '' }; }); continue; }
   if (a.startsWith('hs=')) { const l = JSON.parse(fs.readFileSync(a.slice(3), 'utf8')); l.forEach(c => cases.push(c)); stats['현대홈쇼핑반품'] = l.length; continue; }
   const [tab, rest] = a.split('='); const [file] = rest.split(':');
   const rows = JSON.parse(fs.readFileSync(file, 'utf8')).values || [];
@@ -37,7 +39,7 @@ for (const a of tabArgs) {
 const html = fs.readFileSync(board, 'utf8');
 const mark = '<script>\n/* 실제 운영';
 if (!html.includes(mark)) throw new Error('보드 파일에서 넣을 자리를 찾지 못했습니다');
-const inj = '<script>window.AS_SNAPSHOT=' + JSON.stringify({ at, cases }).replace(/</g, '\\u003c') + ';</script>\n';
+const inj = '<script>window.AS_SNAPSHOT=' + JSON.stringify({ at, cases }).replace(/</g, '\\u003c') + ';window.AS_REPORTS=' + JSON.stringify(reports).replace(/</g, '\\u003c') + ';</script>\n';
 fs.writeFileSync(out, html.replace(mark, inj + mark));
 const by = {}; cases.forEach(c => by[c.stage] = (by[c.stage] || 0) + 1);
 console.log(JSON.stringify({ at, total: cases.length, tabs: stats, stages: by }));

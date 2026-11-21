@@ -189,6 +189,7 @@ td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
     <button role="tab" data-v="trk" aria-selected="false">송장 추적</button>
     <button role="tab" data-v="new" aria-selected="false">새 접수</button>
     <button role="tab" data-v="boss" aria-selected="false">총괄</button>
+    <button role="tab" data-v="rep" aria-selected="false">보고함</button>
     <button role="tab" data-v="plan" aria-selected="false">설계 설명</button>
   </div>
 
@@ -210,6 +211,7 @@ td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
   <section id="v-trk" hidden></section>
   <section id="v-new" hidden></section>
   <section id="v-boss" hidden></section>
+  <section id="v-rep" hidden></section>
   <section id="v-plan" hidden></section>
 </div>
 <div class="toast" id="toast" hidden></div>
@@ -667,6 +669,24 @@ function repeats(){
 function repeatTable(){const r=repeats().slice(0,10);
   return r.length?`<div class="tw"><table><thead><tr><th>제품 · 고장</th><th>건수</th><th>진행 중</th><th>판단</th></tr></thead><tbody>${r.map(([k,v])=>`<tr><td>${esc(k)}</td><td class="n">${v.n}</td><td class="n">${v.open}</td><td>${v.n>=5?'<span class="pri P2">반복 · 제품개발 공유</span>':v.n>=3?'<span class="pri P3">지켜보기</span>':''}</td></tr>`).join('')}</tbody></table></div>`:'<p>자료 없음</p>'}
 
+/* ---------- 보고함: AS 창이 본부(관제탑 inbox)로 보낸 보고 ---------- */
+const REPORTS=window.AS_REPORTS||[];
+const RGROUP=[['daily','매일 갱신'],['decide','결정·설계 (대표 확인 대기 포함)'],['product','제품개발 공유']];
+const rgOf=r=>/^as-daily/.test(r.id)?'daily':/repeat/.test(r.id)?'product':'decide';
+let repOpen=null;
+function renderRep(){
+  const L=REPORTS.slice().sort((a,b)=>String(b.at).localeCompare(String(a.at)));
+  $('v-rep').innerHTML=`<div class="doc"><div><h2>보고함</h2>
+  <p>AS 창이 본부(관제탑 받은편지함)로 보낸 보고 ${L.length}건입니다. 본부가 읽고 남긴 답도 함께 보입니다. 고객 이름·연락처는 들어 있지 않습니다.</p></div>
+  ${RGROUP.map(([g,lab])=>{const l=L.filter(r=>rgOf(r)===g); if(!l.length) return '';
+   return `<div><h3>${lab} · ${l.length}건</h3><div class="list">${l.map(r=>`<div class="row ${repOpen===r.id?'sel':''}" role="button" tabindex="0" data-rep="${esc(r.id)}">
+     <span class="path"><span class="todo" style="font-size:15px">${esc(r.title)}</span></span>
+     <span class="who ${r.status==='new'?'c':''}">${r.status==='new'?'안 읽음':r.status==='sent'?'전달됨':'본부 읽음'}</span>
+     <span class="meta full"><span class="when">${esc(String(r.at).slice(0,16).replace('T',' '))}</span>${r.reply?` · 본부 답: ${esc(r.reply)}`:''}</span>
+     ${repOpen===r.id?`<pre class="msg full">${esc(r.body||'')}${r.update?'\n\n[추가] '+esc(r.update):''}</pre>`:''}</div>`).join('')}</div></div>`}).join('')}</div>`;
+}
+$('v-rep').onclick=e=>{const r=e.target.closest('[data-rep]'); if(!r) return; repOpen=repOpen===r.dataset.rep?null:r.dataset.rep; renderRep()};
+
 /* ---------- 설계 설명 ---------- */
 $('v-plan').innerHTML=`<div class="doc">
 <div><h2>이 초안의 생각</h2>
@@ -753,7 +773,7 @@ function boot(){
 }
 
 /* ---------- 화면 전환·이벤트 ---------- */
-function show(v){['todo','trk','new','boss','plan'].forEach(k=>$('v-'+k).hidden=k!==v);
+function show(v){['todo','trk','new','boss','rep','plan'].forEach(k=>$('v-'+k).hidden=k!==v); if(v==='rep')renderRep();
   document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.v===v));
   if(v==='trk')renderTrk(); if(v==='boss')renderBoss(); if(v==='todo')refresh()}
 function openCase(id){sel=id;dtab='do';editH=-1;editInfo=false;q=id;$('q').value=id;show('todo')}
