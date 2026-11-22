@@ -23,10 +23,10 @@ for (let i = 2; i < A.length; i++) {
     fam: /베라건/.test(prod) ? '베라건' : /베이직/.test(prod) ? '베이직 미니' : '기타', product: prod, buy: od ? od[1] + '-' + od[2] + '-' + od[3] : '', shop: '현대홈쇼핑 (' + channel + ')',
     symptom: reason + (reasonNote ? ' · ' + reasonNote.replace(/\d[\d\- ]{6,}\d/g, '***').slice(0, 50) : ''),
     method: '수거', inTrack: inv ? carrier + ' ' + inv : '', outTrack: '', inspect: opened ? '개봉' : '', plan: '', alert: null, tin: [], tout: [], rev: 0,
-    sheetTab: '현대홈쇼핑반품', sheetProg: '진행단계: ' + step + (wh ? ' · 상세: ' + wh : '') + (opened ? ' · ' + opened : ''), sheetMemo: '' };
+    sheetTab: '현대홈쇼핑반품', sheetProg: '진행단계: ' + step + (wh ? ' · 상세: ' + (/입고|회수|배송|요청|완료|미개봉|개봉|취소/.test(wh) && !/\d+호|로 \d|동,/.test(wh) ? wh : '(기타 메모)') : '') + (opened ? ' · ' + (/^(개봉|미개봉)$/.test(opened) ? opened : '(메모)') : ''), sheetMemo: '' };
   const tin = t => c.tin.push(t);
   tin({ t: recv, k: 'book', x: '회수요청 (파트너시스템)', loc: '' });
-  const inWh = /입고완료|회수완료/.test(wh);
+  const inWh = /입고완료|회수완료|회수됨/.test(wh);
   if (/취소/.test(kind) || /회수상품없음/.test(reasonFull)) { c.stage = 'closed'; }
   else if (step === '회수완료') { c.stage = 'done'; if (conf) tin({ t: conf.slice(0, 16), k: 'arrived', x: '회수확정', loc: '' }); else tin({ t: recv, k: 'arrived', x: '회수완료', loc: '' }); }
   else if (inWh) {
