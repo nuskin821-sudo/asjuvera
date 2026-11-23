@@ -16,6 +16,7 @@ json.dump({'values':[r[41:46] if len(r)>41 else [] for r in v]},open(f'{d}/hs_b.
 P
 node "$T/hs.js" "$D/hs_a.json" "$D/hs_b.json" "$AT" > "$D/hs-cases.json" 2>"$D/hs.log"
 node "$T/hspartner.js" "$D/tower/tower/as_hyundai.json" "$D/hs-cases.json" > "$D/hsp-cases.json" 2>"$D/hsp.log"
+python3 -I -c "import json,sys;json.load(open(sys.argv[1]))" "$D/cafe24.json" 2>/dev/null || { echo '{"status":"못 읽음","items":[]}' > "$D/cafe24.json"; echo "카페24 못 읽음" >&2; }
 node "$T/cafe24.js" "$D/cafe24.json" > "$D/cafe24-cases.json" 2>"$D/c24.log"
 node "$T/snapshot.js" /home/user/juvera-as-board.html /home/user/as-board-snapshot.html "$AT" \
   "as=$D/as.json" "수거완료=$D/sugo.json" "출고예정=$D/ship.json" "유상AS입금대기=$D/pay.json" "보류=$D/hold.json" "처리완료=$D/done.json" \
