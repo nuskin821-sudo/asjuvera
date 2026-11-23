@@ -58,6 +58,17 @@ textarea{width:100%;resize:vertical}
 .strip button span{font-size:13px;color:var(--sub);font-weight:500}
 .strip button em{font-style:normal;font-size:11.5px;color:var(--sub)}
 .strip button.hot b{color:var(--red)}
+.strip .moreBtn{display:none}
+@media (max-width:700px){
+  .strip{grid-template-columns:repeat(3,1fr);gap:6px}
+  .strip button{padding:7px 8px}
+  .strip button b{font-size:18px}
+  .strip button span{font-size:12px;line-height:1.25}
+  .strip button em{display:none}
+  .strip button.z{display:none}
+  .strip:not(.open) button.more:not([aria-pressed="true"]){display:none}
+  .strip .moreBtn{display:flex;justify-content:center;align-items:center;color:var(--sub)}
+}
 .strip button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
 .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .bar input[type=text]{flex:1 1 220px}
@@ -448,7 +459,8 @@ function renderStrip(){
   const items=[['todo','지금 할 일 전체',cnt(c=>{const t=task(c);return !t.wait&&!t.end}),'',0],
    ...GROUPS.map(([g,l,o])=>[g,l,cnt(c=>inGroup(c,g)),disp(o),['alert','inspect','notify'].includes(g)]),
    ['wait','기다리는 중',cnt(c=>task(c).wait),'자동 감시',0],['hold','보류',cnt(c=>c.stage==='hold'),'',0],['done','완료·종결',cnt(c=>ST[c.stage].end&&c.stage!=='hold'),'',0]];
-  $('strip').innerHTML=items.map(([k,l,n,o,h])=>`<button data-f="${k}" aria-pressed="${filt===k&&!q}" class="${h&&n?'hot':''}"><b>${n}</b><span>${l}</span><em>${o||'&nbsp;'}</em></button>`).join('');
+  $('strip').innerHTML=items.map(([k,l,n,o,h])=>`<button data-f="${k}" aria-pressed="${filt===k&&!q}" class="${h&&n?'hot':''} ${['wait','hold','done'].includes(k)?'more':(!n&&k!=='todo'&&!(filt===k&&!q)?'z':'')}"><b>${n}</b><span>${l}</span><em>${o||'&nbsp;'}</em></button>`).join('')
+   +`<button class="moreBtn" data-more="1"><span>${$('strip').classList.contains('open')?'접기 ▴':'대기·보류·완료 ▾'}</span></button>`;
 }
 function renderList(){
   const v=visible();
@@ -877,7 +889,7 @@ function show(v){['todo','trk','new','boss','rep','plan'].forEach(k=>$('v-'+k).h
 function openCase(id){sel=id;dtab='do';editH=-1;editInfo=false;q=id;$('q').value=id;show('todo')}
 $('tabs').onclick=e=>{const b=e.target.closest('button');if(b)show(b.dataset.v)};
 $('catSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;cat=b.dataset.c;filt='todo';q='';$('q').value='';sel=null;show('todo')};
-$('strip').onclick=e=>{const b=e.target.closest('button');if(!b)return;filt=b.dataset.f;q='';$('q').value='';refresh()};
+$('strip').onclick=e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.more){$('strip').classList.toggle('open');renderStrip();return}filt=b.dataset.f;q='';$('q').value='';refresh()};
 $('ownerSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;owner=b.dataset.o;document.querySelectorAll('#ownerSeg button').forEach(x=>x.setAttribute('aria-pressed',x===b));refresh()};
 $('q').oninput=e=>{q=e.target.value.trim();renderStrip();renderList()};
 const pick=r=>{sel=r.dataset.id;dtab='do';editH=-1;editInfo=false;refresh()};
