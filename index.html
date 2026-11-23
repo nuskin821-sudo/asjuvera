@@ -19,6 +19,12 @@
   --accent:#7ea2ff; --accent-ink:#0d1422; --accent-soft:#1f2c4d;
   --red:#ff8a80; --red-soft:#47201e; --amber:#f2c261; --amber-soft:#3d3015; --green:#6fd39a; --green-soft:#173524; color-scheme:dark}
 *{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{overflow-x:hidden;overflow-x:clip;max-width:100%}
+.wrap,.work,.list,.row,.detail,.doc{max-width:100%}
+.tw{max-width:100%;-webkit-overflow-scrolling:touch}
+/* 아이폰 사파리는 16px보다 작은 입력칸을 누르면 화면을 확대해 좌우로 밀린다 */
+@media (max-width:900px){input,select,textarea{font-size:16px!important}}
 [hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.55;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 60px}
@@ -199,7 +205,7 @@ td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
       <div class="strip" id="strip"></div>
       <div class="bar">
         <div class="seg" id="ownerSeg">
-          <button data-o="all" aria-pressed="true">전체 담당</button><button data-o="상담" aria-pressed="false">김은진(상담)</button><button data-o="창고" aria-pressed="false">최미영 실장(창고)</button>
+          <button data-o="all" aria-pressed="true">모든 현황</button><button data-o="상담" aria-pressed="false">김은진(상담)</button><button data-o="창고" aria-pressed="false">최미영 실장(창고)</button>
         </div>
         <input type="text" id="q" placeholder="이름·연락처 뒷자리·접수번호·송장번호 검색 (완료 건 포함)">
       </div>
@@ -415,8 +421,8 @@ const Hd=k=>dtab===k?'':'hidden';
 const catOf=c=>c.inflow==='현대홈쇼핑'?'hs':'as';
 const disp=o=>ROLE_NAME[o]||(o==='자동'?'자동 감시':o);
 const role=()=>LIVE&&USER?USER.role:$('me').value;
-const myName=()=>LIVE&&USER?USER.name:disp($('me').value);
-function log(c,x){c.hist.push({t:ts(),who:myName(),x})}
+const myName=()=>LIVE&&USER?USER.name:(ME&&ME.name)?ME.name:disp($('me').value);
+function log(c,x){c.hist.push({t:ts(),who:myName(),x,uid:ME?ME.id:undefined})}
 function toast(t){const e=$('toast');e.textContent=t;e.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>e.hidden=true,2400)}
 
 /* ---------- 목록 ---------- */
@@ -771,9 +777,28 @@ $('v-plan').innerHTML=`<div class="doc">
 <li>확인 필요: 듀얼 딥웨이브 유상 금액 (김은진 님), 입금 재안내 3일·배송 확인 48시간·수거 지연 3일 기준.</li></ol></div></div>`;
 
 /* ---------- 저장 (실제 운영) ---------- */
+/* 공유 저장 (클로드 업무판): 누른 내용을 판 저장소에 두고 모든 사람에게 실시간으로 보여 준다. 시트 반영은 AS 창이 한다. */
+let DB=null, ME=null; const dbBusy=new Map();
+function dbSave(c){ if(!DB) return; if(dbBusy.get(c.id)){dbBusy.set(c.id,'again');return} dbBusy.set(c.id,'now');
+  DB.doc('cases/'+c.id).set({json:JSON.stringify(c),by:ME?ME.id:'',at:ts()}).then(()=>{const again=dbBusy.get(c.id)==='again';dbBusy.delete(c.id);if(again)dbSave(c)})
+   .catch(e=>{dbBusy.delete(c.id);toast(e&&e.code==='permission_denied'?'저장 권한이 없습니다. 대표님께 업무판 참여 권한을 요청해 주세요':'저장하지 못했습니다: '+(e&&e.code||e))}) }
+async function initShared(){
+  if(LIVE||!window.claude||!window.claude.use) return;
+  const db=await window.claude.use('db'); if(!db) return; DB=db;
+  try{const u=await window.claude.use('user'); if(u){const m=await u.me(); ME={id:m.id,name:m.name||''}}}catch(e){}
+  $('badge').textContent='공유 판 · 누르면 모두에게 바로 저장됩니다 (시트 반영은 AS 창이 평일에)'; $('badge').className='proto live';
+  if(ME&&ME.name){$('meBox').hidden=true;$('meLive').hidden=false;$('meLive').textContent=ME.name}
+  let timer=setTimeout(()=>toast('공유 저장소에 아직 연결되지 않았습니다. 잠시 뒤 다시 열어 주세요'),10000);
+  DB.collection('cases').onSnapshot(sn=>{ if(!sn.metadata.fromCache) clearTimeout(timer);
+    sn.docChanges().forEach(ch=>{ if(ch.type==='removed') return; const d=ch.doc.data(); if(!d||!d.json) return;
+      let c; try{c=C(JSON.parse(d.json))}catch(e){return} const i=cases.findIndex(x=>x.id===ch.doc.id); if(i>=0) cases[i]=c; else cases.push(c) });
+    const busy=document.activeElement&&$('detail').contains(document.activeElement)&&/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName);
+    renderStrip();renderList(); if(!busy) renderDetail(); if(!$('v-boss').hidden)renderBoss(); if(!$('v-trk').hidden)renderTrk();
+  },e=>{clearTimeout(timer);toast('공유 저장소 연결이 끊겼습니다. 다시 열어 주세요')});
+}
 const saving=new Map(); // 건마다 저장을 한 번에 하나씩 보낸다 (연달아 눌러도 순서가 꼬이지 않게)
 function persist(c){
-  if(!LIVE) return;
+  if(!LIVE){dbSave(c);return}
   if(saving.get(c)){saving.set(c,'again');return}
   saving.set(c,'now');
   const wasNew=String(c.id).startsWith('NEW-'), tmp=c.id;
@@ -789,7 +814,8 @@ function reload(){
     renderStrip();renderList(); if(!busy) renderDetail(); if(!$('v-boss').hidden)renderBoss(); if(!$('v-trk').hidden)renderTrk()}).getCases();
 }
 function boot(){
-  if(SNAP){$('badge').textContent='시트 수집본 · '+sh(SNAP.at)+' 기준 · 보기용 (여기서 누른 것은 시트에 저장되지 않음)';$('meBox').hidden=true}
+  if(SNAP){$('badge').textContent='시트 수집본 · '+sh(SNAP.at)+' 기준 · 공유 저장소 연결 중…';$('meBox').hidden=true}
+  if(!LIVE) initShared();
   if(!LIVE){renderNew();refresh(); if(window.matchMedia('(min-width:901px)').matches){sel=visible()[0]?.id||null;refresh()} return}
   $('badge').textContent='자료를 불러오는 중…';
   $('meBox').hidden=true; document.querySelector('#tabs [data-v="plan"]').hidden=true;
