@@ -19,7 +19,7 @@ for (let i = 2; i < A.length; i++) {
   const channel = g(x, 3) || 'TV';
   const prod = g(r, 3).replace(/^(\[[^\]]+\])+\s*/, '').replace(/^쥬베라\s*/, '');
   const od = order.match(/^(\d{4})(\d{2})(\d{2})/);
-  const c = { id: 'HS-' + order, inflow: '현대홈쇼핑', sub: channel + ' · ' + kind, recv, name: '주문 …' + order.slice(-4), phone: '', addr: '',
+  const c = { id: 'HS-' + order, inflow: '현대홈쇼핑', sub: channel + ' · ' + kind, recv, name: (g(r, 37) || g(r, 32) || '주문 …' + order.slice(-4)), phone: (d => d.length >= 8 ? d.slice(0, 3) + '-****-' + d.slice(-4) : '')((g(r, 38) || g(r, 34)).replace(/\D/g, '')), addr: '',
     fam: /베라건/.test(prod) ? '베라건' : /베이직/.test(prod) ? '베이직 미니' : '기타', product: prod, buy: od ? od[1] + '-' + od[2] + '-' + od[3] : '', shop: '현대홈쇼핑 (' + channel + ')',
     symptom: reason + (reasonNote ? ' · ' + reasonNote.replace(/\d[\d\- ]{6,}\d/g, '***').slice(0, 50) : ''),
     method: '수거', inTrack: inv ? carrier + ' ' + inv : '', outTrack: '', inspect: opened ? '개봉' : '', plan: '', alert: null, tin: [], tout: [], rev: 0,

@@ -228,7 +228,7 @@ const $=id=>document.getElementById(id);
 const p2=n=>String(n).padStart(2,'0');
 const pd=s=>new Date(String(s).replace(' ','T'));                 // 'YYYY-MM-DD HH:MM' → 날짜
 const iso=d=>d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());
-const ts=()=>{const B=NOW();const d=LIVE?new Date():new Date(B.getFullYear(),B.getMonth(),B.getDate(),new Date().getHours(),new Date().getMinutes());return iso(d)+' '+p2(d.getHours())+':'+p2(d.getMinutes())};
+const ts=()=>{const d=new Date();return iso(d)+' '+p2(d.getHours())+':'+p2(d.getMinutes())};
 const md=s=>{const d=pd(s);return (d.getMonth()+1)+'/'+d.getDate()};
 const sh=s=>{const d=pd(s);return md(s)+(String(s).length>10?' '+p2(d.getHours())+':'+p2(d.getMinutes()):'')};
 const day0=d=>new Date(d.getFullYear(),d.getMonth(),d.getDate());
@@ -239,7 +239,12 @@ const won=n=>n?n.toLocaleString('ko-KR')+'원':'0원';
 /* 'AS 비용' 탭 기준: [1~2년, 2년 이후] */
 const FEE={'신형뷰러':[19000,19000],'구형뷰러':[15000,15000],'프리미엄 플러스':[45000,60000],'트라이':[50000,65000],'트리플':[55000,80000],'베이직 미니':[30000,30000],'듀얼 딥웨이브':[90000,90000],'베라건':[29000,29000],'피지흡입기':[25000,25000],'기타':[0,0]};
 const BLOCKED={'신형뷰러':'유상 AS 접수 불가 (공장 일정, 2027년 1월 재개)'};
-const SYMPTOMS=['손잡이파손','측면파손','본체파손','온열안됨','파란불 깜박임','배터리고장','충전안됨','전극헤드파손','정상작동'];
+const SYMPTOMS=['손잡이파손','측면파손','본체파손','온열안됨','파란불 깜박임','배터리고장','충전안됨','전극헤드파손','정상작동','반품 제품 이상 없음','기타(직접 입력)'];
+const CTYPES=['AS','반품','교환'];
+const ctypeOf=c=>c.ctype||(/반품|변심|충동구매/.test((c.symptom||'')+(c.sub||''))?'반품':/교환/.test((c.symptom||'')+(c.sub||''))?'교환':'AS');
+const K_OPTS=['제품 발송안내 필요','수거접수 필요','회수완료','택배접수완료 필요'];
+const P_OPTS=['확인중','출고예정','보상판매안내','출고완료','보상판매 출고완료','재발송예정','재발송완료'];
+const CARRIERS=['롯데택배','CJ대한통운(풀필먼트)'];
 let SETTINGS={account:''};
 let ROLE_NAME={상담:'김은진',창고:'최미영 실장'};
 let USER=null;
@@ -267,21 +272,21 @@ const C=o=>Object.assign({method:'수거',addr:'',inTrack:'',outTrack:'',inspect
 function sampleCases(){
  const S=(o,h,tin,tout)=>C(Object.assign(o,{recv:T(o.recv),hist:(h||[]).map(a=>H(...a)),tin:(tin||[]).map(E),tout:(tout||[]).map(E)}));
  return [
- S({id:'AS-1117-04',inflow:'AS 신청서',sub:'홈페이지 접수폼',recv:'11/17 11:08',name:'김○아',phone:'010-****-2711',fam:'신형뷰러',product:'신형뷰러 JV-306 퍼플',buy:'2025-12-29',shop:'네이버',symptom:'눈썹이 말리지 않음',stage:'judge'},[['11/17 11:08','자동','접수폼에서 들어옴']]),
- S({id:'AS-1117-03',inflow:'AS 신청서',sub:'홈페이지 접수폼',recv:'11/17 11:59',name:'조○숙',phone:'010-****-1543',fam:'신형뷰러',product:'신형뷰러 JV-306 퍼플',buy:'2024-10-30',shop:'공구(확인 필요)',symptom:'간격이 떠서 속눈썹이 집히지 않음',stage:'judge'},[['11/17 11:59','자동','접수폼에서 들어옴']]),
+ S({id:'AS-1117-04',inflow:'아임웹',sub:'AS 신청서',recv:'11/17 11:08',name:'김○아',phone:'010-****-2711',fam:'신형뷰러',product:'신형뷰러 JV-306 퍼플',buy:'2025-12-29',shop:'네이버',symptom:'눈썹이 말리지 않음',stage:'judge'},[['11/17 11:08','자동','접수폼에서 들어옴']]),
+ S({id:'AS-1117-03',inflow:'아임웹',sub:'AS 신청서',recv:'11/17 11:59',name:'조○숙',phone:'010-****-1543',fam:'신형뷰러',product:'신형뷰러 JV-306 퍼플',buy:'2024-10-30',shop:'공구(확인 필요)',symptom:'간격이 떠서 속눈썹이 집히지 않음',stage:'judge'},[['11/17 11:59','자동','접수폼에서 들어옴']]),
  S({id:'AS-1116-07',inflow:'카카오톡',sub:'채널 상담',recv:'11/16 10:20',name:'전○영',phone:'010-****-7580',fam:'신형뷰러',product:'신형뷰러 JV-306 화이트',buy:'2026-01-13',shop:'쿠팡',symptom:'열은 오르나 속눈썹이 올라가지 않음',stage:'pickup'},[['11/16 10:20','김은진','카톡 상담 내용으로 접수'],['11/16 10:24','김은진','판정: 무상 (구매 후 1년 이내) · 수거로 진행']]),
  S({id:'AS-1116-05',inflow:'네이버',sub:'톡톡',recv:'11/16 14:02',name:'이○숙',phone:'010-****-7273',fam:'신형뷰러',product:'신형뷰러 JV-306 퍼플',buy:'2025-12-29',shop:'네이버',symptom:'집는 손잡이가 안 됨',stage:'pickup'},[['11/16 14:02','김은진','톡톡 내용으로 접수 · 판정: 무상']]),
- S({id:'AS-1113-02',inflow:'카카오톡',sub:'채널 상담',recv:'11/13 15:02',name:'김○전',phone:'010-****-9500',fam:'베이직 미니',product:'베이직 미니 마사지기',buy:'2026-11-01',shop:'자사몰',symptom:'전원이 켜졌다 꺼짐',stage:'transit',inTrack:'2688-3694-****',alert:{type:'fail',x:'11/15 기사 방문, 고객 부재로 수거 실패'}},[['11/13 15:10','김은진','수거 접수 · 송장 등록'],['11/15 17:40','택배 연동','수거 실패 (고객 부재)']],[['11/13 15:10','book','수거 예약','용인기흥'],['11/15 17:40','fail','수거 실패 (고객 부재)','용인기흥']]),
- S({id:'AS-1110-01',inflow:'AS 신청서',sub:'홈페이지 접수폼',recv:'11/10 13:49',name:'이○영',phone:'010-****-7042',fam:'신형뷰러',product:'신형뷰러 JV-306 화이트',buy:'2026-07-07',shop:'쿠팡',symptom:'전원을 켜도 히팅이 안 됨',stage:'transit',inTrack:'2645-4302-****'},[['11/10 14:05','김은진','판정: 무상 · 수거 접수'],['11/13 16:22','택배 연동','수거 완료']],[['11/10 14:05','book','수거 예약','서울은평'],['11/13 16:22','picked','수거 완료','서울은평']]),
- S({id:'AS-1116-02',inflow:'AS 신청서',sub:'홈페이지 접수폼',recv:'11/16 09:10',name:'강○미',phone:'010-****-8959',fam:'신형뷰러',product:'신형뷰러 JV-306 화이트',buy:'2026-03-01',shop:'쿠팡',symptom:'잘 안 집어짐',stage:'transit',inTrack:'2645-4311-****'},[['11/16 09:30','김은진','판정: 무상 · 수거 접수']],[['11/16 09:30','book','수거 예약','창원의창'],['11/17 10:40','picked','수거 완료','창원의창'],['11/17 13:05','move','이동 중','대전 허브']]),
- S({id:'AS-1109-03',inflow:'AS 신청서',sub:'홈페이지 접수폼',recv:'11/09 08:06',name:'박○민',phone:'010-****-9580',fam:'신형뷰러',product:'신형뷰러 JV-306 탄젤로',buy:'2025-11-10',shop:'쿠팡',symptom:'고무가 헐거워져 눈썹이 안 집힘',stage:'inspect',inTrack:'2645-4298-****'},[['11/09 09:12','김은진','판정: 무상 · 수거 접수'],['11/14 11:51','택배 연동','창고 도착']],[['11/09 09:12','book','수거 예약','서울동대문'],['11/11 15:30','picked','수거 완료','서울동대문'],['11/12 02:10','move','이동 중','대전 허브'],['11/14 11:51','arrived','창고 도착','시흥 배곧']]),
- S({id:'AS-1111-06',inflow:'네이버',sub:'교환접수',recv:'11/11 09:41',name:'이○빈',phone:'010-****-6590',fam:'신형뷰러',product:'신형뷰러 JV-306 퍼플',buy:'2026-11-09',shop:'네이버',symptom:'[교환] 오른쪽 부분이 깨져서 도착',stage:'inspect',inTrack:'2645-4305-****'},[['11/11 10:00','김은진','네이버 교환접수 건 등록'],['11/15 13:50','택배 연동','창고 도착']],[['11/11 10:00','book','수거 예약','부산북구'],['11/13 14:05','picked','수거 완료','부산북구'],['11/14 03:20','move','이동 중','대전 허브'],['11/15 13:50','arrived','창고 도착','시흥 배곧']]),
- S({id:'AS-1105-02',inflow:'AS 신청서',sub:'홈페이지 접수폼',recv:'11/05 10:04',name:'김○라',phone:'010-****-0509',fam:'듀얼 딥웨이브',product:'듀얼 딥웨이브',buy:'',shop:'인플루언서 공구(확인 안 됨)',symptom:'충전 후에도 기기가 먹통',stage:'notify',inTrack:'2645-4280-****',inspect:'충전안됨',plan:'paid',inspAt:'2026-11-13 16:30'},[['11/05 10:10','김은진','구매일 확인 안 됨 → 유상 가능성 사전 안내 후 수거'],['11/12 14:50','택배 연동','창고 도착'],['11/13 16:30','최미영 실장','검사: 충전안됨 · 전용 충전선으로도 충전 불가']],[['11/05 10:10','book','수거 예약','대구북구'],['11/10 16:00','picked','수거 완료','대구북구'],['11/12 14:50','arrived','창고 도착','시흥 배곧']]),
+ S({id:'AS-1113-02',ctype:'반품',inflow:'카카오톡',sub:'채널 상담',recv:'11/13 15:02',name:'김○전',phone:'010-****-9500',fam:'베이직 미니',product:'베이직 미니 마사지기',buy:'2026-11-01',shop:'자사몰',symptom:'전원이 켜졌다 꺼짐',stage:'transit',inTrack:'2688-3694-****',alert:{type:'fail',x:'11/15 기사 방문, 고객 부재로 수거 실패'}},[['11/13 15:10','김은진','수거 접수 · 송장 등록'],['11/15 17:40','택배 연동','수거 실패 (고객 부재)']],[['11/13 15:10','book','수거 예약','용인기흥'],['11/15 17:40','fail','수거 실패 (고객 부재)','용인기흥']]),
+ S({id:'AS-1110-01',inflow:'아임웹',sub:'AS 신청서',recv:'11/10 13:49',name:'이○영',phone:'010-****-7042',fam:'신형뷰러',product:'신형뷰러 JV-306 화이트',buy:'2026-07-07',shop:'쿠팡',symptom:'전원을 켜도 히팅이 안 됨',stage:'transit',inTrack:'2645-4302-****'},[['11/10 14:05','김은진','판정: 무상 · 수거 접수'],['11/13 16:22','택배 연동','수거 완료']],[['11/10 14:05','book','수거 예약','서울은평'],['11/13 16:22','picked','수거 완료','서울은평']]),
+ S({id:'AS-1116-02',inflow:'아임웹',sub:'AS 신청서',recv:'11/16 09:10',name:'강○미',phone:'010-****-8959',fam:'신형뷰러',product:'신형뷰러 JV-306 화이트',buy:'2026-03-01',shop:'쿠팡',symptom:'잘 안 집어짐',stage:'transit',inTrack:'2645-4311-****'},[['11/16 09:30','김은진','판정: 무상 · 수거 접수']],[['11/16 09:30','book','수거 예약','창원의창'],['11/17 10:40','picked','수거 완료','창원의창'],['11/17 13:05','move','이동 중','대전 허브']]),
+ S({id:'AS-1109-03',inflow:'아임웹',sub:'AS 신청서',recv:'11/09 08:06',name:'박○민',phone:'010-****-9580',fam:'신형뷰러',product:'신형뷰러 JV-306 탄젤로',buy:'2025-11-10',shop:'쿠팡',symptom:'고무가 헐거워져 눈썹이 안 집힘',stage:'inspect',inTrack:'2645-4298-****'},[['11/09 09:12','김은진','판정: 무상 · 수거 접수'],['11/14 11:51','택배 연동','창고 도착']],[['11/09 09:12','book','수거 예약','서울동대문'],['11/11 15:30','picked','수거 완료','서울동대문'],['11/12 02:10','move','이동 중','대전 허브'],['11/14 11:51','arrived','창고 도착','시흥 배곧']]),
+ S({id:'AS-1111-06',ctype:'교환',inflow:'네이버',sub:'교환접수',recv:'11/11 09:41',name:'이○빈',phone:'010-****-6590',fam:'신형뷰러',product:'신형뷰러 JV-306 퍼플',buy:'2026-11-09',shop:'네이버',symptom:'[교환] 오른쪽 부분이 깨져서 도착',stage:'inspect',inTrack:'2645-4305-****'},[['11/11 10:00','김은진','네이버 교환접수 건 등록'],['11/15 13:50','택배 연동','창고 도착']],[['11/11 10:00','book','수거 예약','부산북구'],['11/13 14:05','picked','수거 완료','부산북구'],['11/14 03:20','move','이동 중','대전 허브'],['11/15 13:50','arrived','창고 도착','시흥 배곧']]),
+ S({id:'AS-1105-02',inflow:'아임웹',sub:'AS 신청서',recv:'11/05 10:04',name:'김○라',phone:'010-****-0509',fam:'듀얼 딥웨이브',product:'듀얼 딥웨이브',buy:'',shop:'인플루언서 공구(확인 안 됨)',symptom:'충전 후에도 기기가 먹통',stage:'notify',inTrack:'2645-4280-****',inspect:'충전안됨',plan:'paid',inspAt:'2026-11-13 16:30'},[['11/05 10:10','김은진','구매일 확인 안 됨 → 유상 가능성 사전 안내 후 수거'],['11/12 14:50','택배 연동','창고 도착'],['11/13 16:30','최미영 실장','검사: 충전안됨 · 전용 충전선으로도 충전 불가']],[['11/05 10:10','book','수거 예약','대구북구'],['11/10 16:00','picked','수거 완료','대구북구'],['11/12 14:50','arrived','창고 도착','시흥 배곧']]),
  S({id:'AS-1104-01',inflow:'카카오톡',sub:'채널 상담',recv:'11/04 12:48',name:'정○희',phone:'010-****-6827',fam:'프리미엄 플러스',product:'[1775] 프리미엄 플러스 로얄베이지',buy:'2024-08-31',shop:'보상판매',symptom:'완충해도 금방 꺼짐',stage:'pay',inTrack:'2645-4270-****',inspect:'배터리고장',plan:'paid',payAsk:'2026-11-11'},[['11/04 13:00','김은진','판정: 유상 (2년 이후) 60,000원 · 수거 접수'],['11/10 11:50','최미영 실장','검사: 배터리고장'],['11/11 10:05','김은진','비용 60,000원 문자 안내']],[['11/04 13:00','book','수거 예약','전주덕진'],['11/06 11:20','picked','수거 완료','전주덕진'],['11/09 11:50','arrived','창고 도착','시흥 배곧']]),
- S({id:'AS-1106-04',inflow:'AS 신청서',sub:'홈페이지 접수폼',recv:'11/06 08:52',name:'이○윤',phone:'010-****-0673',fam:'트리플',product:'[105] 트리플 로얄베이지',buy:'2025-03-21',shop:'자사몰',symptom:'2칸에서 바로 1칸으로 떨어짐',stage:'pay',inTrack:'2645-4276-****',inspect:'배터리고장',plan:'paid',payAsk:'2026-11-16'},[['11/13 15:00','최미영 실장','검사: 배터리고장'],['11/16 09:40','김은진','비용 55,000원 문자 안내']],[['11/06 09:00','book','수거 예약','부산강서'],['11/10 13:10','picked','수거 완료','부산강서'],['11/12 13:50','arrived','창고 도착','시흥 배곧']]),
- S({id:'AS-1103-05',inflow:'AS 신청서',sub:'홈페이지 접수폼',recv:'11/03 09:20',name:'최○정',phone:'010-****-2352',fam:'신형뷰러',product:'신형뷰러 JV-306 탄젤로',buy:'2025-12-03',shop:'네이버',symptom:'눈썹이 집어지지 않음',stage:'ship',inTrack:'2645-4266-****',inspect:'손잡이파손',plan:'free'},[['11/10 14:20','최미영 실장','검사: 손잡이파손'],['11/11 09:15','김은진','무상 교환 안내 완료']],[['11/03 10:00','book','수거 예약','여수'],['11/05 15:00','picked','수거 완료','여수'],['11/09 11:50','arrived','창고 도착','시흥 배곧']]),
+ S({id:'AS-1106-04',inflow:'아임웹',sub:'AS 신청서',recv:'11/06 08:52',name:'이○윤',phone:'010-****-0673',fam:'트리플',product:'[105] 트리플 로얄베이지',buy:'2025-03-21',shop:'자사몰',symptom:'2칸에서 바로 1칸으로 떨어짐',stage:'pay',inTrack:'2645-4276-****',inspect:'배터리고장',plan:'paid',payAsk:'2026-11-16'},[['11/13 15:00','최미영 실장','검사: 배터리고장'],['11/16 09:40','김은진','비용 55,000원 문자 안내']],[['11/06 09:00','book','수거 예약','부산강서'],['11/10 13:10','picked','수거 완료','부산강서'],['11/12 13:50','arrived','창고 도착','시흥 배곧']]),
+ S({id:'AS-1103-05',inflow:'아임웹',sub:'AS 신청서',recv:'11/03 09:20',name:'최○정',phone:'010-****-2352',fam:'신형뷰러',product:'신형뷰러 JV-306 탄젤로',buy:'2025-12-03',shop:'네이버',symptom:'눈썹이 집어지지 않음',stage:'ship',inTrack:'2645-4266-****',inspect:'손잡이파손',plan:'free'},[['11/10 14:20','최미영 실장','검사: 손잡이파손'],['11/11 09:15','김은진','무상 교환 안내 완료']],[['11/03 10:00','book','수거 예약','여수'],['11/05 15:00','picked','수거 완료','여수'],['11/09 11:50','arrived','창고 도착','시흥 배곧']]),
  S({id:'AS-1102-02',inflow:'카카오톡',sub:'채널 상담',recv:'11/02 10:55',name:'최○정',phone:'010-****-4180',fam:'신형뷰러',product:'신형뷰러 JV-306 퍼플',buy:'2023-12-07',shop:'면세점',symptom:'손잡이 파손',stage:'hold'},[['11/02 11:00','김은진','유상 AS 접수 불가 안내 → 고객 불만, 카톡 상담 중']]),
- S({id:'AS-1029-08',inflow:'AS 신청서',sub:'홈페이지 접수폼',recv:'10/29 09:33',name:'한○진',phone:'010-****-3022',fam:'신형뷰러',product:'신형뷰러 JV-306 화이트',buy:'2025-11-16',shop:'네이버',symptom:'경첩 부위 파손',stage:'done',inTrack:'2645-4250-****',outTrack:'2645-4302-****',inspect:'손잡이파손',plan:'free'},[['11/12 10:30','최미영 실장','검사: 손잡이파손'],['11/17 10:00','최미영 실장','교환품 출고 · 출고 안내 문자 발송']],[['10/29 10:00','book','수거 예약','수원권선'],['11/09 14:00','picked','수거 완료','수원권선'],['11/11 11:50','arrived','창고 도착','시흥 배곧']],[['11/17 10:00','book','출고 접수','시흥 배곧'],['11/17 13:20','picked','집화 완료','시흥 배곧']]),
+ S({id:'AS-1029-08',inflow:'아임웹',sub:'AS 신청서',recv:'10/29 09:33',name:'한○진',phone:'010-****-3022',fam:'신형뷰러',product:'신형뷰러 JV-306 화이트',buy:'2025-11-16',shop:'네이버',symptom:'경첩 부위 파손',stage:'done',inTrack:'2645-4250-****',outTrack:'2645-4302-****',inspect:'손잡이파손',plan:'free'},[['11/12 10:30','최미영 실장','검사: 손잡이파손'],['11/17 10:00','최미영 실장','교환품 출고 · 출고 안내 문자 발송']],[['10/29 10:00','book','수거 예약','수원권선'],['11/09 14:00','picked','수거 완료','수원권선'],['11/11 11:50','arrived','창고 도착','시흥 배곧']],[['11/17 10:00','book','출고 접수','시흥 배곧'],['11/17 13:20','picked','집화 완료','시흥 배곧']]),
  S({id:'AS-1027-03',inflow:'네이버',sub:'톡톡',recv:'10/27 10:47',name:'윤○경',phone:'010-****-4417',fam:'트리플',product:'[105] 트리플 로얄베이지',buy:'2026-02-11',shop:'네이버',symptom:'충전이 안 됨',stage:'done',inTrack:'2645-4241-****',outTrack:'2645-4288-****',inspect:'충전안됨',plan:'free'},[['11/06 15:10','최미영 실장','검사: 충전안됨'],['11/12 10:20','최미영 실장','교환품 출고 · 출고 안내 문자 발송'],['11/14 13:42','택배 연동','고객 수령 확인']],[['10/27 11:00','book','수거 예약','인천연수'],['11/03 15:00','picked','수거 완료','인천연수'],['11/05 11:50','arrived','창고 도착','시흥 배곧']],[['11/12 10:20','book','출고 접수','시흥 배곧'],['11/12 17:30','picked','집화 완료','시흥 배곧'],['11/13 04:10','move','이동 중','대전 허브'],['11/14 09:05','move','배송 출발','인천연수'],['11/14 13:42','arrived','고객 수령','인천연수']]),
  S({id:'HS-1115-01',inflow:'현대홈쇼핑',sub:'반품회수',recv:'11/15 01:08',name:'오○희',phone:'010-****-3318',fam:'베라건',product:'베라건 마사지건 JC-M4603',buy:'2026-11-08',shop:'현대홈쇼핑 (TV)',symptom:'반품 · 충동구매/변심 · 주문 20261108-******',stage:'inspect',inTrack:'2688-3701-****'},[['11/15 01:08','자동','현대홈쇼핑 회수요청 목록에서 들어옴'],['11/17 09:40','택배 연동','창고 도착']],[['11/15 01:08','book','수거 예약','성남분당'],['11/16 14:20','picked','수거 완료','성남분당'],['11/17 09:40','arrived','창고 도착','시흥 배곧']]),
  S({id:'HS-1116-02',inflow:'현대홈쇼핑',sub:'교환회수',recv:'11/16 01:06',name:'서○자',phone:'010-****-8020',fam:'베라건',product:'베라건 마사지건 JC-M4603',buy:'2026-11-08',shop:'현대홈쇼핑 (TV)',symptom:'교환 · 마감처리 불량 · 주문 20261108-******',stage:'transit',inTrack:'2688-3712-****'},[['11/16 01:06','자동','현대홈쇼핑 회수요청 목록에서 들어옴']],[['11/16 01:06','book','수거 예약','청주흥덕'],['11/17 11:00','picked','수거 완료','청주흥덕']]),
@@ -338,6 +343,7 @@ function goods(c){ // 물건이 지금 어디에 어떤 상태로 있는지
   if(o) return o.k==='arrived'?{s:5,txt:'고객 수령 완료',loc:o.loc,t:o.t,cls:'ok'}:{s:4,txt:'고객에게 배송 중 · '+o.x,loc:o.loc,t:o.t};
   const m={inspect:'창고 · 개봉·검사 기다림',notify:'창고 보관 · 고객 안내 기다림',pay:'창고 보관 · 입금 기다림',ship:'창고 · 출고 준비'};
   if(!i&&m[c.stage]) return {s:3,txt:m[c.stage],loc:'',t:''};
+  if(c.plan==='returned') return {s:3,txt:'창고 · 반품 회수 완료',loc:i?i.loc:'',t:i?i.t:'',cls:'ok'};
   if(!i&&c.stage==='done') return {s:4,txt:'출고됨',loc:'',t:''};
   if(!i) return {s:0,txt:c.method==='고객발송'?'고객이 직접 발송 중 (송장 미확인)':'고객 보관 · 수거 접수 전',loc:'',t:''};
   if(i.k==='fail') return {s:0,txt:'고객 보관 · 수거 실패',loc:i.loc,t:i.t,cls:'bad'};
@@ -360,9 +366,9 @@ function trk(c,dir){
   const e=dir==='out'?c.tout:c.tin; if(!e.length) return null; const last=e[e.length-1], a=alertOf(c);
   return {dir,e,last,step:TSTEP[last.k],bad:last.k==='fail'||(dir==='in'&&a&&(a.type==='stale'||a.type==='nopick')),no:dir==='out'?c.outTrack:c.inTrack};
 }
-const trackLink=no=>/^[\d-]+$/.test(no||'')?` · <a href="https://www.lotteglogis.com/home/reservation/tracking/linkView?InvNo=${no.replace(/-/g,'')}" target="_blank" rel="noopener">롯데택배에서 조회</a>`:'';
+const trackLink=(no,car)=>!/^[\d-]+$/.test(no||'')?'':/CJ/.test(car||'')?` · <a href="https://www.cjlogistics.com/ko/tool/parcel/tracking?gnbInvcNo=${no.replace(/-/g,'')}" target="_blank" rel="noopener">CJ대한통운에서 조회</a>`:` · <a href="https://www.lotteglogis.com/home/reservation/tracking/linkView?InvNo=${no.replace(/-/g,'')}" target="_blank" rel="noopener">롯데택배에서 조회</a>`;
 function trkBlock(c,dir){const t=trk(c,dir);if(!t)return '';
-  return `<div><h3>${dir==='in'?'회수 송장 (고객 → 창고)':'출고 송장 (창고 → 고객)'} · 롯데택배 ${esc(t.no)}${trackLink(t.no)}</h3>
+  return `<div><h3>${dir==='in'?'회수 송장 (고객 → 창고)':'출고 송장 (창고 → 고객)'} · ${esc(dir==='out'?(c.outCarrier||'롯데택배'):'롯데택배')} ${esc(t.no)}${trackLink(t.no,dir==='out'?c.outCarrier:'')}</h3>
   <div class="tsteps">${TLAB[dir].map((l,i)=>`<span class="${i<t.step?'past':i===t.step?(t.last.k==='fail'?'bad':'on'):''}">${l}</span>`).join('')}</div>
   <ul class="hist">${t.e.slice().reverse().map(h=>`<li><small>${sh(h.t)}${h.loc?' · '+esc(h.loc):''}</small>${esc(h.x)}</li>`).join('')}</ul></div>`}
 function liveBlock(c){
@@ -383,7 +389,7 @@ const TPL={
  paid:(c,fee)=>`(주)쥬베라 AS 입니다.\n보내주신 제품 확인하였으며 고장 증상(${c.inspect})이 확인되었습니다.\n아래 비용 안내드리오니 입금 후 회신 주시면 새제품으로 출고 예정입니다.\n\n금액 : ${won(fee)}\n입금계좌 : ${acct()}`,
  free:c=>`안녕하세요 고객님, AS 신청해주신 (주)쥬베라 입니다.\n제품 확인 결과 ${c.inspect}으로 확인되어 무상으로 새 제품 교환 출고 예정입니다.`,
  normal:c=>`안녕하세요 고객님, AS 보내주신 (주)쥬베라 입니다.\n제품 확인 결과 정상작동 되어 재발송 안내드립니다.\n\nAS접수 증상 : ${c.symptom}\n확인결과 : 정상`,
- out:c=>`(주)쥬베라 AS [발신전용]\n안녕하세요 고객님 A/S 접수해 주신 쥬베라입니다.\n상품 회수 및 확인 완료되어 오늘 출고되었습니다.\n송장번호 : ${c.outTrack||'(출고 송장 입력 시 자동)'}\n평일 기준으로 2~3일 내에 배송 예정이오니 참고하여 주세요.`
+ out:c=>`(주)쥬베라 AS [발신전용]\n안녕하세요 고객님 A/S 접수해 주신 쥬베라입니다.\n상품 회수 및 확인 완료되어 오늘 출고되었습니다.\n택배사 : ${c.outCarrier||'롯데택배'}\n송장번호 : ${c.outTrack||'(출고 송장 입력 시 자동)'}\n평일 기준으로 2~3일 내에 배송 예정이오니 참고하여 주세요.`
 };
 
 /* ---------- AS 분류 (고장 종류 · 급한 정도) ---------- */
@@ -447,7 +453,7 @@ function renderList(){
       <span class="who ${oc}">${esc(disp(t.own))}</span>
       <span class="full">${stepBar(c)}</span>
       ${why?`<span class="meta full" style="color:var(--red);font-weight:600">${esc(why)}</span>`:''}
-      <span class="meta full">${triPill(c)}<span class="when">${sh(c.recv)} 접수</span> · ${esc(c.inflow)} · <b>${esc(c.name)}</b></span></div>`}).join('')
+      <span class="meta full"><span class="kind" style="background:var(--soft);color:var(--ink)">${esc(ctypeOf(c))}</span>${triPill(c)}<span class="when">${sh(c.recv)} 접수</span> · ${esc(c.inflow)} · <b>${esc(c.name)}</b></span></div>`}).join('')
    :`<div class="empty">${q?'검색 결과가 없습니다.':'이 칸에는 지금 할 일이 없습니다.'}</div>`;
 }
 
@@ -460,7 +466,7 @@ function nextBox(c){
     if(a.type==='fail') acts=`<button class="btn" data-a="clear">재수거 접수했음</button><button class="btn ghost" data-a="hold">고객 연락 안 됨 → 보류</button>`;
     if(a.type==='nopick') acts=`<button class="btn" data-a="markPicked">수거된 것 확인함</button><button class="btn ghost" data-a="clear">재수거 접수했음</button><button class="btn ghost" data-a="hold">보류</button>`;
     if(a.type==='stale') acts=`<button class="btn" data-a="clear">택배사 확인했음 (이동 중)</button><button class="btn ghost" data-a="arrive">창고 도착 확인됨</button>`;
-    if(a.type==='overdue') acts=`<button class="btn" data-a="clear">재안내 보냈음</button><button class="btn ghost" data-a="paid">입금 확인됨</button><button class="btn ghost" data-a="nopay">진행 안 함 → 착불 반송</button>`;
+    if(a.type==='overdue') acts=`<button class="btn" data-a="clear">재안내 보냈음</button><button class="btn ghost" data-a="paid">입금 확인됨</button><button class="btn ghost" data-a="nopay">진행 안 함 → 착불 반송</button><button class="btn ghost" data-a="nopayClose">진행 안 함 → 종료</button>`;
   } else if(c.stage==='judge'){
     body=`<p>자동 판정: <span class="tag ${blk?'no':w.k}">${blk?'접수 불가':w.k==='free'?'무상':'유상 '+won(w.fee)}</span> ${esc(blk||w.label)}</p>`;
     acts=blk?`<button class="btn" data-a="block">접수 불가 안내하고 종결</button><button class="btn ghost" data-a="toPickup">예외로 수거 진행</button>`
@@ -474,17 +480,18 @@ function nextBox(c){
     body=`<p>${c.method==='고객발송'?'고객이 선불로 보내는 중입니다.':'택배 이동을 기다립니다. 수거 실패, 3일째 수거 안 됨, 48시간 이동 없음이면 빨갛게 올라옵니다.'} 택배 자동 조회가 붙기 전까지는 아래 버튼으로 표시합니다.</p>`;
     acts=(picked||c.method==='고객발송'?'':`<button class="btn" data-a="markPicked">수거됨</button>`)+`<button class="btn ${picked||c.method==='고객발송'?'':'ghost'}" data-a="arrive">창고 도착</button>`+(c.method==='고객발송'?'':`<button class="btn ghost" data-a="markFail">수거 실패</button>`);
   } else if(c.stage==='inspect'){
-    body=`<p>상자를 열어 확인한 결과를 고르세요.</p><label class="field">검사 결과<select id="f-sym">${SYMPTOMS.map(s=>`<option>${s}</option>`).join('')}</select></label><label class="field">창고 메모 (선택)<input type="text" id="f-note" placeholder="예: 충전선 없이 본품만 옴"></label>`;
-    acts=`<button class="btn" data-a="inspectDone">검사 결과 저장 → ${esc(disp('상담'))}에게 넘김</button>`;
+    const rt=ctypeOf(c)==='반품';
+    body=`<p>${rt?'<b>반품</b> 건입니다. 이상이 없으면 회수 완료로 끝내고, 문제가 있으면 결과를 골라 상담에게 넘깁니다.':'상자를 열어 확인한 결과를 고르세요.'}</p><label class="field">검사 결과<select id="f-sym">${(rt?['반품 제품 이상 없음',...SYMPTOMS.filter(x=>x!=='반품 제품 이상 없음')]:SYMPTOMS).map(s=>`<option>${s}</option>`).join('')}</select></label><label class="field">창고 메모 · 기타 내용 (기타를 고르면 꼭 적어 주세요)<input type="text" id="f-note" placeholder="예: 충전선 없이 본품만 옴 / 반품 제품 박스 훼손"></label>`;
+    acts=(rt?`<button class="btn" data-a="returnClose">이상 없음 → 반품 회수 완료·종료</button>`:'')+`<button class="btn ${rt?'ghost':''}" data-a="inspectDone">검사 결과 저장 → ${esc(disp('상담'))}에게 넘김</button>`;
   } else if(c.stage==='notify'){
     const p=c.plan, u=dueInfo(c);
-    body=`<p>검사 결과 <b>${esc(c.inspect)}</b> → ${p==='normal'?'정상작동, 착불 재발송':p==='free'?'무상 교환':'유상 '+won(w.fee)}. '안내문' 탭의 문구를 보내고 눌러 주세요.</p>${u?`<p><b>${u.txt}</b></p>`:''}`;
-    acts=`<button class="btn" data-a="notifyDone">고객 안내 완료</button><button class="btn ghost" data-a="hold">고객 연락 안 됨 → 보류</button>`;
+    body=`<p>검사 결과 <b>${esc(c.inspect)}</b> → ${p==='normal'?'정상작동, 착불 재발송':p==='free'?'무상 교환':p==='rtcheck'?'반품 제품 문제 확인':'유상 '+won(w.fee)}. '안내문' 탭의 문구를 보내고 눌러 주세요.</p>${u?`<p><b>${u.txt}</b></p>`:''}`;
+    acts=(p==='rtcheck'?`<button class="btn" data-a="returnClose">고객 안내 완료 → 반품 종료</button>`:`<button class="btn" data-a="notifyDone">고객 안내 완료</button>`)+`<button class="btn ghost" data-a="hold">고객 연락 안 됨 → 보류</button>`+(p==='paid'?`<button class="btn ghost" data-a="nopayClose">진행 안 함 → 종료</button>`:'');
   } else if(c.stage==='pay'){
     body=`<p>${md(c.payAsk)} 비용 안내 · ${days(c.payAsk)}일째 입금 기다리는 중. 3일이 지나면 재안내 표시가 뜹니다.</p>`;
-    acts=`<button class="btn" data-a="paid">입금 확인됨</button><button class="btn ghost" data-a="nopay">진행 안 함 → 착불 반송</button>`;
+    acts=`<button class="btn" data-a="paid">입금 확인됨</button><button class="btn ghost" data-a="nopay">진행 안 함 → 착불 반송</button><button class="btn ghost" data-a="nopayClose">진행 안 함 → 종료</button>`;
   } else if(c.stage==='ship'){
-    body=`<p>${c.plan==='normal'||c.plan==='return'?'받은 제품을 착불로 재발송':'새 제품 교환 출고'}합니다. 송장을 넣으면 출고 안내 문자가 준비되고 완료됩니다.</p><label class="field">출고 송장번호<input type="text" id="f-out" placeholder="예: 2645-0000-0000"></label>`;
+    body=`<p>${c.plan==='normal'||c.plan==='return'?'받은 제품을 착불로 재발송':'새 제품 교환 출고'}합니다. 송장을 넣으면 출고 안내 문자(택배사·송장번호 포함)가 준비되고 완료됩니다.</p><div class="formgrid"><label class="field">택배사<select id="f-car">${CARRIERS.map(o=>`<option ${o===(c.outCarrier||'')?'selected':''}>${o}</option>`).join('')}</select></label><label class="field">선불/착불<select id="f-pay">${['선불','착불'].map(o=>`<option ${o===(c.payType||(c.plan==='normal'||c.plan==='return'?'착불':'선불'))?'selected':''}>${o}</option>`).join('')}</select></label><label class="field">출고 송장번호<input type="text" id="f-out" placeholder="예: 2645-0000-0000"></label></div>`;
     acts=`<button class="btn" data-a="shipDone">출고 완료</button>`;
   } else if(c.stage==='hold'){
     body=`<p>보류 중입니다. 다시 진행할 때 눌러 주세요.</p>`; acts=`<button class="btn" data-a="resume">다시 진행 (판정부터)</button><button class="btn ghost" data-a="close">종결</button>`;
@@ -493,6 +500,7 @@ function nextBox(c){
     body=`<p>처리가 끝난 건입니다.</p>`;
     if(c.stage==='done'&&o&&o.k!=='arrived') acts=`<button class="btn ghost" data-a="received">고객 수령 확인</button>`;
   }
+  if(c._undo) acts+=`<button class="btn ghost" data-a="undo">↩ 이전 단계로</button>`;
   return `<div class="next ${t.red?'urgent':''}"><span class="lab">지금 해야 할 일 · ${esc(disp(t.own))}</span><span class="big">${esc(t.todo)}</span>${body}<div class="acts">${acts}</div></div>`;
 }
 function msgFor(c){
@@ -500,6 +508,7 @@ function msgFor(c){
   const w=warranty(c);
   if(c.stage==='judge'&&w.k==='paid'&&BLOCKED[c.fam]) return ['유상 AS 접수 불가 안내',TPL.blocked(c)];
   if(c.stage==='pickup'||c.stage==='transit') return ['수거 안내',TPL.pickup(c)];
+  if(c.stage==='notify'&&c.plan==='rtcheck') return ['반품 확인 결과 안내',`안녕하세요 고객님, 쥬베라입니다.\n보내 주신 반품 제품을 확인했습니다.\n\n■ 확인 결과: ${c.inspect}\n\n처리 방법은 담당자가 다시 안내드리겠습니다.`];
   if(c.stage==='notify'||c.stage==='pay') return c.plan==='normal'?['정상작동 안내',TPL.normal(c)]:c.plan==='free'?['무상 교환 안내',TPL.free(c)]:['유상 비용 안내',TPL.paid(c,w.fee)];
   if(c.stage==='ship'||c.stage==='done') return ['출고 안내',TPL.out(c)];
   return null;
@@ -515,15 +524,25 @@ function infoPane(c){
   const w=warranty(c);
   if(editInfo) return `<div><h3>접수 자료 수정</h3><div class="formgrid">
     ${fld('e-name','고객명',c.name)}${fld('e-phone','연락처',c.phone)}${fld('e-addr','주소',c.addr)}
-    <label class="field">상담 인입경로<select id="e-inflow">${['AS 신청서','카카오톡','네이버','현대홈쇼핑','전화'].map(o=>`<option ${o===c.inflow?'selected':''}>${o}</option>`).join('')}</select></label>
+    <label class="field">상담 인입경로<select id="e-inflow">${['아임웹','카카오톡','네이버','현대홈쇼핑','전화'].map(o=>`<option ${o===c.inflow?'selected':''}>${o}</option>`).join('')}</select></label>
     ${fld('e-sub','세부 채널',c.sub)}
     <label class="field">제품 종류 (금액 기준)<select id="e-fam">${Object.keys(FEE).map(o=>`<option ${o===c.fam?'selected':''}>${o}</option>`).join('')}</select></label>
     ${fld('e-product','제품명·색상',c.product)}${fld('e-shop','구매처',c.shop)}${fld('e-buy','구매일',c.buy,'date')}${fld('e-sym','고객 증상',c.symptom)}
-    ${fld('e-in','회수 송장번호',c.inTrack)}${fld('e-out','출고 송장번호',c.outTrack)}
+    <label class="field">구분<select id="e-ctype">${CTYPES.map(o=>`<option ${o===ctypeOf(c)?'selected':''}>${o}</option>`).join('')}</select></label>
+    <label class="field">회수여부 (시트)<select id="e-k">${['',...new Set([...K_OPTS,c.sheetK||c._k||''].filter(Boolean))].map(o=>`<option ${o===(c.sheetK||c._k||'')?'selected':''}>${o}</option>`).join('')}</select></label>
+    <label class="field">진행사항 (시트)<select id="e-p">${['',...new Set([...P_OPTS,c.sheetP||''].filter(Boolean))].map(o=>`<option ${o===(c.sheetP||'')?'selected':''}>${o}</option>`).join('')}</select></label>
+    <label class="field">선불/착불<select id="e-pay">${['','선불','착불'].map(o=>`<option ${o===(c.payType||'')?'selected':''}>${o}</option>`).join('')}</select></label>
+    ${fld('e-in','회수 송장번호',c.inTrack)}
+    <label class="field">출고 택배사<select id="e-car">${CARRIERS.map(o=>`<option ${o===(c.outCarrier||'롯데택배')?'selected':''}>${o}</option>`).join('')}</select></label>
+    ${fld('e-out','출고 송장번호',c.outTrack)}
   </div><div class="acts" style="margin-top:10px"><button class="btn" data-a="saveInfo">수정 저장</button><button class="btn ghost" data-a="cancelInfo">취소</button></div></div>`;
   return `<div><h3>접수 자료</h3><dl>
     <dt>접수 일시</dt><dd>${sh(c.recv)}</dd>
+    <dt>구분</dt><dd><b>${esc(ctypeOf(c))}</b></dd>
     <dt>인입경로</dt><dd>${esc(c.inflow)} › ${esc(c.sub)}</dd>
+    <dt>회수여부</dt><dd>${esc(c.sheetK||c._k||'-')}</dd>
+    <dt>진행사항</dt><dd>${esc(c.sheetP||c.sheetProg||'-')}</dd>
+    <dt>선불/착불</dt><dd>${esc(c.payType||'-')}</dd>
     <dt>연락처</dt><dd>${esc(c.phone)}</dd>
     <dt>주소</dt><dd>${c.addr?esc(c.addr):'없음'}</dd>
     <dt>제품</dt><dd>${esc(c.product)}</dd>
@@ -533,7 +552,7 @@ function infoPane(c){
     <dt>보증 판정</dt><dd><span class="tag ${w.k}">${w.k==='free'?'무상':'유상'}</span> ${esc(w.label)}${w.k==='paid'?' · 기준 금액 '+won(w.fee):''}</dd>
     <dt>회수 방법</dt><dd>${c.method==='고객발송'?'고객 직접 발송(선불)':'롯데택배 수거'}${c.inTrack?' · 송장 '+esc(c.inTrack):''}</dd>
     <dt>검사 결과</dt><dd>${c.inspect?esc(c.inspect):'아직 없음'}</dd>
-    <dt>출고</dt><dd>${c.outTrack?'송장 '+esc(c.outTrack):'아직 없음'}</dd>
+    <dt>출고</dt><dd>${c.outTrack?esc(c.outCarrier||'롯데택배')+' 송장 '+esc(c.outTrack):'아직 없음'}</dd>
     ${c.sheetTab?`<dt>시트 위치</dt><dd>[${esc(c.sheetTab)}] 탭${c.sheetProg?' · 진행사항: '+esc(c.sheetProg):''}${c.sheetMemo?' · 비고: '+esc(c.sheetMemo):''}</dd>`:''}
   </dl><div class="acts" style="margin-top:10px"><button class="btn ghost" data-a="editInfo">접수 자료 수정</button></div></div>`;
 }
@@ -554,6 +573,8 @@ function renderDetail(){
 function act(a,btn){
   const c=cases.find(x=>x.id===sel); if(a==='x'){sel=null;return refresh()} if(!c) return;
   const w=warranty(c); const val=id=>($(id)?.value||'').trim(); const al=alertOf(c);
+  const sig=()=>c.stage+'|'+JSON.stringify(c.alert)+'|'+c.tin.length+'|'+c.tout.length+'|'+(c.staleAck||'')+'|'+(c.payRemind||'');
+  const before=sig(), snap=a==='undo'?null:JSON.stringify(Object.assign({},c,{hist:undefined,_undo:undefined}));
   switch(a){
    case 'toPickup': c.stage='pickup';c.method='수거';log(c,'판정 확인: '+w.label+' · 수거로 진행');break;
    case 'selfShip': c.stage='transit';c.method='고객발송';log(c,'판정 확인: '+w.label+' · 고객 직접 발송 안내');break;
@@ -567,11 +588,19 @@ function act(a,btn){
      else if(al.type==='stale'){c.staleAck=ts();log(c,'택배사 확인: 이동 중')}
      else if(al.type==='overdue'){c.payRemind=iso(NOW());log(c,'입금 재안내 문자 보냄')}
      break;
-   case 'inspectDone': {const s=val('f-sym');c.inspect=s;c.inspAt=ts();c.plan=s==='정상작동'?'normal':w.k==='free'?'free':'paid';c.stage='notify';log(c,'검사: '+s+(val('f-note')?' · '+val('f-note'):''));break}
+   case 'inspectDone': {let s=val('f-sym'); const note=val('f-note'); if(s==='기타(직접 입력)'){ if(!note) return toast('기타 내용을 창고 메모 칸에 적어 주세요'); s='기타: '+note }
+     c.inspect=s;c.inspAt=ts(); const rt=ctypeOf(c)==='반품';
+     if(rt&&s==='반품 제품 이상 없음'){c.stage='done';c.plan='returned';log(c,'반품 검수: 이상 없음 → 회수 완료·종료'+(note?' · '+note:''));break}
+     c.plan=rt?'rtcheck':(s==='정상작동'||s==='반품 제품 이상 없음')?'normal':w.k==='free'?'free':'paid';
+     if(c.plan==='free'){c.stage='ship';log(c,'검사: '+s+(note&&!s.startsWith('기타')?' · '+note:'')+' → 무상 교환 (안내 생략, 바로 출고)');break}
+     c.stage='notify';log(c,'검사: '+s+(note&&!s.startsWith('기타')?' · '+note:''));break}
+   case 'returnClose': {const note=val('f-note'); c.inspect=c.inspect||'반품 제품 이상 없음'; c.stage='done';c.plan='returned';log(c,'반품 회수 완료 → 종료'+(note?' · '+note:''));break}
+   case 'nopayClose': c.alert=null;c.stage='closed';c.closeWhy='유상AS 진행 안 함';log(c,'유상 진행 안 함 → 종료');break;
+   case 'undo': {if(!c._undo) return; const h=c.hist; const back=JSON.parse(c._undo); Object.keys(c).forEach(k=>{if(k!=='hist'&&k!=='id'&&k!=='rev') delete c[k]}); Object.assign(c,back); c.hist=h; delete c._undo; log(c,'이전 단계로 되돌림 → '+task(c).todo); break}
    case 'notifyDone': if(c.plan==='paid'){c.stage='pay';c.fee=w.fee;c.payAsk=iso(NOW());log(c,'비용 '+won(w.fee)+' 안내 완료')}else{c.stage='ship';log(c,(c.plan==='normal'?'정상작동 재발송':'무상 교환')+' 안내 완료')}break;
    case 'paid': c.stage='ship';log(c,'입금 확인 '+won(w.fee));break;
    case 'nopay': c.plan='return';c.stage='ship';log(c,'유상 진행 안 함 → 착불 반송');break;
-   case 'shipDone': if(!val('f-out')) return toast('출고 송장번호를 넣어 주세요'); c.outTrack=val('f-out');c.stage='done';c.tout=[{t:ts(),k:'book',x:'출고 접수',loc:'시흥 배곧'}];log(c,'출고 완료 · 송장 '+c.outTrack+' · 출고 안내 문자');break;
+   case 'shipDone': if(!val('f-out')) return toast('출고 송장번호를 넣어 주세요'); c.outCarrier=val('f-car');c.payType=val('f-pay');c.outTrack=val('f-out');c.stage='done';c.tout=[{t:ts(),k:'book',x:'출고 접수',loc:'시흥 배곧'}];log(c,'출고 완료 · '+c.outCarrier+' '+c.payType+' · 송장 '+c.outTrack+' · 출고 안내 문자');break;
    case 'received': c.tout.push({t:ts(),k:'arrived',x:'고객 수령',loc:''});log(c,'고객 수령 확인');break;
    case 'hold': c.alert=null;c.stage='hold';log(c,'보류로 옮김');break;
    case 'resume': c.stage='judge';log(c,'보류 해제');break;
@@ -582,10 +611,11 @@ function act(a,btn){
    case 'saveHist': {const v=val('f-edit'); if(!v) return toast('내용을 적어 주세요'); const h=c.hist[editH]; if(h.x!==v){h.x=v;h.ed=myName()+' '+sh(ts())} editH=-1; break}
    case 'editInfo': editInfo=true; return renderDetail();
    case 'cancelInfo': editInfo=false; return renderDetail();
-   case 'saveInfo': Object.assign(c,{name:val('e-name'),phone:val('e-phone'),addr:val('e-addr'),inflow:val('e-inflow'),sub:val('e-sub'),fam:val('e-fam'),product:val('e-product'),shop:val('e-shop'),buy:val('e-buy'),symptom:val('e-sym'),inTrack:val('e-in'),outTrack:val('e-out')}); editInfo=false; log(c,'접수 자료 수정'); break;
+   case 'saveInfo': Object.assign(c,{name:val('e-name'),phone:val('e-phone'),addr:val('e-addr'),inflow:val('e-inflow'),sub:val('e-sub'),fam:val('e-fam'),product:val('e-product'),shop:val('e-shop'),buy:val('e-buy'),symptom:val('e-sym'),inTrack:val('e-in'),outTrack:val('e-out'),ctype:val('e-ctype'),sheetK:val('e-k'),sheetP:val('e-p'),payType:val('e-pay'),outCarrier:val('e-car')}); editInfo=false; log(c,'접수 자료 수정'+(c.sheetP?' · 진행사항: '+c.sheetP:'')); break;
    case 'copy': {const t=$('msgtxt').textContent;navigator.clipboard?.writeText(t).then(()=>toast('안내문을 복사했습니다'),()=>toast('복사가 막혀 있습니다. 글을 길게 눌러 복사해 주세요'));return}
    default: return;
   }
+  if(snap&&sig()!==before){c._undo=snap;c.sheetP=''}
   persist(c); toast('저장했습니다 → '+task(c).todo); refresh();
 }
 function refresh(){renderStrip();renderList();renderDetail();if(!$('v-boss').hidden)renderBoss();if(!$('v-trk').hidden)renderTrk()}
@@ -608,7 +638,7 @@ function renderNew(){
   <textarea id="n-raw" rows="6">${LIVE?'':'안녕하세요 카톡으로 문의드려요. 이름은 박서연이고 연락처 010-5555-1234 입니다.\n작년 12월 5일에 쿠팡에서 산 신형뷰러 화이트인데 손잡이가 부러졌어요. 수거 부탁드립니다.\n주소는 경기 성남시 분당구 ○○로 12, 101동 202호'}</textarea>
   <div class="acts" style="margin-top:8px"><button class="btn" id="n-parse">항목 나누기</button></div></div>
   <div><h3>접수 항목 (확인 후 저장)</h3><div class="formgrid">
-   <label class="field">상담 인입경로<select id="n-inflow"><option>카카오톡</option><option>네이버</option><option>AS 신청서</option><option>현대홈쇼핑</option><option>전화</option></select></label>
+   <label class="field">상담 인입경로<select id="n-inflow"><option>카카오톡</option><option>네이버</option><option>아임웹</option><option>현대홈쇼핑</option><option>전화</option></select></label>
    <label class="field">세부 채널<input type="text" id="n-sub" value="채널 상담"></label>
    <label class="field">고객명<input type="text" id="n-name"></label>
    <label class="field">연락처<input type="text" id="n-phone"></label>

@@ -64,7 +64,7 @@ function fam_(p) {
 }
 function inflow_(applied) {
   const s = String(applied || '');
-  if (/^\d{4}\D/.test(s)) return ['AS 신청서', '홈페이지 접수폼'];
+  if (/^\d{4}\D/.test(s)) return ['아임웹', 'AS 신청서'];
   if (s.indexOf('톡톡') >= 0) return ['네이버', '톡톡'];
   if (s.indexOf('네이버') >= 0 || s.indexOf('스마트스토어') >= 0) return ['네이버', s];
   if (s.indexOf('카톡') >= 0 || s.indexOf('카카오') >= 0) return ['카카오톡', '채널 상담'];
@@ -206,7 +206,7 @@ function cells_(c, cur) {
     case 'notify': return { tab: '수거완료', k: '회수완료', prog: '고객 안내 필요', note: c.inspect };
     case 'pay': return { tab: '유상AS입금대기', k: '회수완료', prog: fee + '유상AS 비용 입금전', out: md_(c.payAsk) + ' 알림', note: c.inspect };
     case 'ship': return { tab: '출고예정', k: '회수완료', prog: c.plan === 'paid' ? '보상판매 출고예정' : (c.plan === 'free' ? '출고예정' : '착불 출고예정'), note: c.inspect };
-    case 'done': return { tab: DONE_TAB, k: '회수완료', prog: c.plan === 'paid' ? '보상판매 출고완료' : (c.plan === 'free' ? '출고완료' : '착불 재발송완료'), out: md_() + ' 안내', track: c.outTrack, note: c.inspect };
+    case 'done': return { tab: DONE_TAB, k: '회수완료', prog: c.plan === 'paid' ? '보상판매 출고완료' : (c.plan === 'free' ? '출고완료' : '착불 재발송완료'), out: c.plan === 'returned' ? undefined : md_() + ' 안내', track: c.outTrack, note: c.inspect };
     case 'hold': return { tab: '보류' };
     case 'closed': return { tab: cur ? undefined : 'as', prog: c.closeWhy || 'AS접수 취소' };
   }
@@ -261,6 +261,10 @@ function saveCase(json) {
     if (t.m !== undefined) v[I.m] = t.m;
     if (t.prog !== undefined) v[I.prog] = t.prog;
     if (t.out !== undefined) v[I.out] = t.out;
+    if (c.sheetK) v[I.k] = c.sheetK;                 // 담당자가 접수 자료에서 직접 고른 회수여부·진행사항이 우선
+    if (c.sheetP) v[I.prog] = c.sheetP;
+    if (c.payType && /ship|done/.test(c.stage) && !/선불|착불/.test(v[I.prog])) v[I.prog] = c.payType + ' ' + v[I.prog];
+    if (c.stage === 'done' && c.plan === 'returned') v[I.prog] = '반품 회수 완료';
     if (t.note !== undefined && t.note) v[I.note] = t.note;
     if (t.track !== undefined && t.track) v[I.track] = t.track; else if (c.outTrack) v[I.track] = c.outTrack;
     const tab = t.tab || pos.tab;

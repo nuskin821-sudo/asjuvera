@@ -7,6 +7,7 @@ const src = fs.readFileSync(path.join(__dirname, '..', 'apps-script', 'Code.gs')
 const stub = { SpreadsheetApp: {}, Session: {}, LockService: {}, HtmlService: {}, Utilities: { formatDate: () => at } };
 const G = new Function(...Object.keys(stub), src + ';return {toCase_,date_,I,CUTOFF,DONE_TAB,NCOL};')(...Object.values(stub));
 const mask = n => { n = String(n || '').trim().split(/\s+/)[0]; return n.length <= 1 ? n : n.length === 2 ? n[0] + '○' : n[0] + '○'.repeat(n.length - 2) + n[n.length - 1]; };
+const maskPhone = p => { const d = String(p || '').replace(/\D/g, ''); return d.length >= 8 ? d.slice(0, 3) + '-****-' + d.slice(-4) : ''; };
 const clean = (s, n) => String(s || '').replace(/\d[\d\- ]{6,}\d/g, '***').replace(/\s+/g, ' ').trim().slice(0, n);
 const cases = [], ids = {}, stats = {};
 let reports = [];
@@ -27,7 +28,7 @@ for (const a of tabArgs) {
     const pre = 'AS-' + d.slice(2).replace(/-/g, '') + '-'; let k = 1; while (ids[pre + ('0' + k).slice(-2)]) k++;
     v[21] = pre + ('0' + k).slice(-2); ids[v[21]] = 1; v[22] = '';
     const c = G.toCase_(tab, v).c; if (done) c.stage = 'done';
-    c.name = mask(c.name); c.phone = ''; c.addr = ''; c.symptom = clean(c.symptom, 60); c.sheetMemo = clean(c.sheetMemo, 60); c.sheetProg = clean(c.sheetProg, 60);
+    c.name = String(c.name || '').trim(); c.phone = maskPhone(c.phone); c.addr = ''; c.symptom = clean(c.symptom, 60); c.sheetMemo = clean(c.sheetMemo, 60); c.sheetProg = clean(c.sheetProg, 60);
     if (c.sheetNote) c.sheetNote = '시트 진행사항 확인: ' + c.sheetProg;
     if (c.alert) c.alert.x = '시트 진행사항: ' + c.sheetProg;
     c.inspect = clean(c.inspect, 30); c.outTrack = '';
