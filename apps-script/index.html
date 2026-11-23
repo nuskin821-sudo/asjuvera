@@ -496,7 +496,9 @@ function nextBox(c){
     body=`<p>${md(c.payAsk)} 비용 안내 · ${days(c.payAsk)}일째 입금 기다리는 중. 3일이 지나면 재안내 표시가 뜹니다.</p>`;
     acts=`<button class="btn" data-a="paid">입금 확인됨</button><button class="btn ghost" data-a="nopay">진행 안 함 → 착불 반송</button><button class="btn ghost" data-a="nopayClose">진행 안 함 → 종료</button>`;
   } else if(c.stage==='ship'){
-    body=`<p>${c.plan==='normal'||c.plan==='return'?'받은 제품을 착불로 재발송':'새 제품 교환 출고'}합니다. 송장을 넣으면 출고 안내 문자(택배사·송장번호 포함)가 준비되고 완료됩니다.</p><div class="formgrid"><label class="field">택배사<select id="f-car">${CARRIERS.map(o=>`<option ${o===(c.outCarrier||'')?'selected':''}>${o}</option>`).join('')}</select></label><label class="field">선불/착불<select id="f-pay">${['선불','착불'].map(o=>`<option ${o===(c.payType||(c.plan==='normal'||c.plan==='return'?'착불':'선불'))?'selected':''}>${o}</option>`).join('')}</select></label><label class="field">출고 송장번호<input type="text" id="f-out" placeholder="예: 2645-0000-0000"></label></div>`;
+    body=`<p>${c.plan==='normal'||c.plan==='return'?'받은 제품을 착불로 재발송':'새 제품 교환 출고'}합니다. 송장을 넣으면 출고 안내 문자(택배사·송장번호 포함)가 준비되고 완료됩니다.</p><div class="formgrid"><label class="field">택배사<select id="f-car">${CARRIERS.map(o=>`<option ${o===(c.outCarrier||'')?'selected':''}>${o}</option>`).join('')}</select></label><label class="field">선불/착불<select id="f-pay">${['선불','착불'].map(o=>`<option ${o===(c.payType||(c.plan==='normal'||c.plan==='return'?'착불':'선불'))?'selected':''}>${o}</option>`).join('')}</select></label><label class="field">출고 송장번호<input type="text" id="f-out" placeholder="예: 2645-0000-0000"></label></div>
+    <div class="acts" ${SAMPLE_OK===false?'hidden':''}><label class="btn ghost" for="f-shot" style="cursor:pointer">📷 송장 사진으로 번호 넣기</label><input type="file" id="f-shot" accept="image/*" capture="environment" hidden></div>
+    <p id="f-shot-msg" style="font-size:13px;color:var(--sub)">송장 사진을 올리면 번호와 택배사를 읽어 칸에 넣습니다. 사진은 번호를 읽는 데만 쓰고 저장하지 않습니다.</p>`;
     acts=`<button class="btn" data-a="shipDone">출고 완료</button>`;
   } else if(c.stage==='hold'){
     body=`<p>보류 중입니다. 다시 진행할 때 눌러 주세요.</p>`; acts=`<button class="btn" data-a="resume">다시 진행 (판정부터)</button><button class="btn ghost" data-a="close">종결</button>`;
@@ -605,7 +607,7 @@ function act(a,btn){
    case 'notifyDone': if(c.plan==='paid'){c.stage='pay';c.fee=w.fee;c.payAsk=iso(NOW());log(c,'비용 '+won(w.fee)+' 안내 완료')}else{c.stage='ship';log(c,(c.plan==='normal'?'정상작동 재발송':'무상 교환')+' 안내 완료')}break;
    case 'paid': c.stage='ship';log(c,'입금 확인 '+won(w.fee));break;
    case 'nopay': c.plan='return';c.stage='ship';log(c,'유상 진행 안 함 → 착불 반송');break;
-   case 'shipDone': if(!val('f-out')) return toast('출고 송장번호를 넣어 주세요'); c.outCarrier=val('f-car');c.payType=val('f-pay');c.outTrack=val('f-out');c.stage='done';c.tout=[{t:ts(),k:'book',x:'출고 접수',loc:'시흥 배곧'}];log(c,'출고 완료 · '+c.outCarrier+' '+c.payType+' · 송장 '+c.outTrack+' · 출고 안내 문자');break;
+   case 'shipDone': if(!val('f-out')) return toast('출고 송장번호를 넣어 주세요'); c.outCarrier=val('f-car');c.payType=val('f-pay');c.outTrack=val('f-out').replace(/\s/g,'');c.stage='done';c.tout=[{t:ts(),k:'book',x:'출고 접수',loc:'시흥 배곧'}];log(c,'출고 완료 · '+c.outCarrier+' '+c.payType+' · 송장 '+c.outTrack+' · 출고 안내 문자');break;
    case 'received': c.tout.push({t:ts(),k:'arrived',x:'고객 수령',loc:''});log(c,'고객 수령 확인');break;
    case 'hold': c.alert=null;c.stage='hold';log(c,'보류로 옮김');break;
    case 'resume': c.stage='judge';log(c,'보류 해제');break;
@@ -795,6 +797,24 @@ async function initShared(){
     renderStrip();renderList(); if(!busy) renderDetail(); if(!$('v-boss').hidden)renderBoss(); if(!$('v-trk').hidden)renderTrk();
   },e=>{clearTimeout(timer);toast('공유 저장소 연결이 끊겼습니다. 다시 열어 주세요')});
 }
+/* 송장 사진 읽기: 사진을 클로드에게 보내 송장번호·택배사만 받는다. 사진은 저장하지 않는다. */
+let SAMPLE=null, SAMPLE_OK=null;
+async function getSample(){ if(SAMPLE) return SAMPLE; if(!window.claude||!window.claude.use){SAMPLE_OK=false;return null}
+  const s=await window.claude.use('sample'); if(!s){SAMPLE_OK=false;return null}
+  const lim=await s.limits().catch(()=>null); if(!lim||!lim.images){SAMPLE_OK=false;return null} SAMPLE=s; SAMPLE_OK=true; return s }
+async function readWaybill(file){
+  const msg=$('f-shot-msg'); const say=t=>{if(msg) msg.textContent=t};
+  say('송장 사진을 읽는 중입니다…');
+  const s=await getSample(); if(!s){say('이 화면에서는 사진 읽기를 쓸 수 없습니다. 번호를 직접 넣어 주세요.');return}
+  try{
+    const r=await s.json('이 사진은 한국 택배 운송장(송장) 또는 출고 목록 화면입니다. 운송장번호(송장번호)와 택배사 이름만 읽어 JSON으로만 답하세요. 형식: {"carrier":"롯데택배|CJ대한통운|기타","numbers":["숫자만, 하이픈 없이"]}. 운송장번호는 보통 10~13자리 숫자입니다. 주문번호·전화번호·우편번호는 넣지 마세요. 고객 이름·주소·전화번호는 답에 절대 쓰지 마세요. 읽을 수 없으면 numbers를 빈 배열로.',{images:[file],modelTier:'quick',cache:false});
+    const nums=((r&&r.numbers)||[]).map(x=>String(x).replace(/\D/g,'')).filter(x=>x.length>=9&&x.length<=14);
+    if(!nums.length){say('송장번호를 찾지 못했습니다. 사진을 다시 찍거나 번호를 직접 넣어 주세요.');return}
+    const out=$('f-out'); if(out) out.value=nums[0];
+    const car=$('f-car'); if(car&&r.carrier){const v=/CJ/i.test(r.carrier)?'CJ대한통운(풀필먼트)':/롯데/.test(r.carrier)?'롯데택배':''; if(v) car.value=v}
+    say(nums.length>1?`송장번호 ${nums.length}개를 읽었습니다. 첫 번째(${nums[0]})를 넣었습니다. 다른 번호: ${nums.slice(1).join(', ')} — 맞는지 확인하고 출고 완료를 눌러 주세요.`:`송장번호 ${nums[0]}를 읽어 넣었습니다. 맞는지 확인하고 출고 완료를 눌러 주세요.`);
+  }catch(e){ say(e&&e.code==='not_granted'?'사진 읽기를 허용하지 않아 쓸 수 없습니다. 번호를 직접 넣어 주세요.':e&&e.code==='rate_limited'?'클로드 사용량이 잠시 막혔습니다. 조금 뒤 다시 하거나 번호를 직접 넣어 주세요.':'사진을 읽지 못했습니다. 번호를 직접 넣어 주세요.') }
+}
 const saving=new Map(); // 건마다 저장을 한 번에 하나씩 보낸다 (연달아 눌러도 순서가 꼬이지 않게)
 function persist(c){
   if(!LIVE){dbSave(c);return}
@@ -841,6 +861,7 @@ $('q').oninput=e=>{q=e.target.value.trim();renderStrip();renderList()};
 const pick=r=>{sel=r.dataset.id;dtab='do';editH=-1;editInfo=false;refresh()};
 $('list').onclick=e=>{const r=e.target.closest('.row');if(r)pick(r)};
 $('list').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){const r=e.target.closest('.row');if(r){e.preventDefault();pick(r)}}};
+$('detail').onchange=e=>{ if(e.target&&e.target.id==='f-shot'&&e.target.files&&e.target.files[0]){ readWaybill(e.target.files[0]); e.target.value='' } };
 $('detail').onclick=e=>{const t=e.target.closest('[data-dt]');if(t){dtab=t.dataset.dt;editH=-1;editInfo=false;return renderDetail()}const b=e.target.closest('[data-a]');if(b)act(b.dataset.a,b)};
 $('v-trk').onclick=e=>{const b=e.target.closest('[data-go]');if(b)openCase(b.dataset.go)};
 $('v-boss').onclick=e=>{const b=e.target.closest('[data-go]');if(b)openCase(b.dataset.go)};
