@@ -45,13 +45,13 @@ h3{font-size:14px;margin:0 0 6px;font-weight:700;color:var(--sub)}
 select,input[type=text],input[type=date],textarea{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:7px 9px;min-width:0}
 textarea{width:100%;resize:vertical}
 
-.cats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.cats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .cats button{border:2px solid var(--line);background:var(--panel);border-radius:10px;padding:16px 18px;text-align:left;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
 .cats button b{font-size:30px;line-height:1.25;font-weight:700}
 .cats button span{font-size:15px;color:var(--sub);font-weight:600}
 .cats button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .cats button[aria-pressed="true"] span{color:var(--accent-ink)}
-@media (max-width:560px){.cats button{padding:12px}.cats button b{font-size:22px}}
+@media (max-width:560px){.cats{gap:6px}.cats button{padding:10px 8px;gap:2px 8px}.cats button b{font-size:19px}.cats button span{font-size:13px}}
 
 .strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:8px}
 .strip button{text-align:left;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:9px 11px;display:flex;flex-direction:column;gap:1px}
@@ -430,7 +430,8 @@ const triPill=c=>{const r=triage(c);return `<span class="pri ${r.p}">${PLAB[r.p]
 /* ---------- 화면 상태 ---------- */
 let filt='todo', owner='all', sel=null, q='', dtab='do', cat='as', editH=-1, editInfo=false;
 const Hd=k=>dtab===k?'':'hidden';
-const catOf=c=>c.inflow==='현대홈쇼핑'?'hs':'as';
+const catOf=c=>c.inflow==='현대홈쇼핑'?'hs':/공구|공동구매/.test(c.shop||'')?'gb':'as';
+const CATN={as:'일반 AS',hs:'현대홈쇼핑',gb:'공구'};
 const disp=o=>ROLE_NAME[o]||(o==='자동'?'자동 감시':o);
 const role=()=>LIVE&&USER?USER.role:$('me').value;
 const myName=()=>LIVE&&USER?USER.name:(ME&&ME.name)?ME.name:disp($('me').value);
@@ -455,7 +456,7 @@ function visible(){
 }
 function renderStrip(){
   const open=k=>cases.filter(c=>catOf(c)===k&&!ST[c.stage].end).length;
-  $('catSeg').innerHTML=[['as','일반 AS'],['hs','현대홈쇼핑']].map(([k,l])=>`<button data-c="${k}" aria-pressed="${cat===k}"><b>${l}</b><span>진행 ${open(k)}건</span></button>`).join('');
+  $('catSeg').innerHTML=[['as','일반 AS'],['hs','현대홈쇼핑'],['gb','공구']].map(([k,l])=>`<button data-c="${k}" aria-pressed="${cat===k}"><b>${l}</b><span>진행 ${open(k)}건</span></button>`).join('');
   const cnt=f=>cases.filter(c=>catOf(c)===cat&&f(c)).length;
   const items=[['todo','지금 할 일 전체',cnt(c=>{const t=task(c);return !t.wait&&!t.end}),'',0],
    ...GROUPS.map(([g,l,o])=>[g,l,cnt(c=>inGroup(c,g)),disp(o),['alert','inspect','notify'].includes(g)]),
@@ -649,7 +650,7 @@ function renderTrk(){
   <p>회수(고객 → 창고)와 출고(창고 → 고객) 송장이 지금 어디에 있는지 한 곳에서 봅니다. ${LIVE?'택배 자동 조회가 붙기 전까지는 직원이 누른 표시가 기록됩니다.':'지금은 예시 기록이며, 실제로는 롯데택배 조회 결과가 자동으로 들어옵니다.'}</p>
   <div class="kpi"><div><b style="color:var(--red)">${n(r=>r.t.bad)}</b><span>문제 (수거 실패·멈춤)</span></div><div><b>${n(r=>r.t.dir==='in'&&r.t.step===0&&!r.t.bad)}</b><span>수거 기다림</span></div><div><b>${n(r=>r.t.dir==='in'&&(r.t.step===1||r.t.step===2)&&!r.t.bad)}</b><span>창고로 오는 중</span></div><div><b>${n(r=>r.t.dir==='in'&&r.t.step===3)}</b><span>창고 도착</span></div><div><b>${n(r=>r.t.dir==='out'&&r.t.step<3)}</b><span>고객에게 가는 중</span></div><div><b>${n(r=>r.t.dir==='out'&&r.t.step===3)}</b><span>고객 수령</span></div></div></div>
   <div class="tw"><table><thead><tr><th>분류</th><th>접수 일시</th><th>접수 → 수거</th><th>방향</th><th>지금 상태</th><th>지금 위치</th><th>마지막 갱신</th><th>고객</th><th>송장번호</th><th>접수 건</th></tr></thead><tbody>
-  ${rows.map(({c,t})=>`<tr><td>${catOf(c)==='hs'?'현대홈쇼핑':'일반 AS'}</td><td class="n">${sh(c.recv)}</td><td>${pkPill(c)}</td><td>${t.dir==='in'?'회수':'출고'}</td><td><span class="trk ${t.bad?'bad':t.step===3?'ok':''}">${esc(t.last.x)}${t.bad&&t.last.k!=='fail'?' · 멈춤':''}</span></td><td>${esc(t.last.loc)}</td><td class="n">${sh(t.last.t)}</td><td>${esc(c.name)}</td><td class="n">${esc(t.no)}</td><td><button class="go" data-go="${esc(c.id)}">${esc(c.id)}</button></td></tr>`).join('')||'<tr><td colspan="10">송장이 등록된 건이 없습니다.</td></tr>'}</tbody></table></div></div>`;
+  ${rows.map(({c,t})=>`<tr><td>${CATN[catOf(c)]}</td><td class="n">${sh(c.recv)}</td><td>${pkPill(c)}</td><td>${t.dir==='in'?'회수':'출고'}</td><td><span class="trk ${t.bad?'bad':t.step===3?'ok':''}">${esc(t.last.x)}${t.bad&&t.last.k!=='fail'?' · 멈춤':''}</span></td><td>${esc(t.last.loc)}</td><td class="n">${sh(t.last.t)}</td><td>${esc(c.name)}</td><td class="n">${esc(t.no)}</td><td><button class="go" data-go="${esc(c.id)}">${esc(c.id)}</button></td></tr>`).join('')||'<tr><td colspan="10">송장이 등록된 건이 없습니다.</td></tr>'}</tbody></table></div></div>`;
 }
 
 /* ---------- 새 접수 ---------- */
