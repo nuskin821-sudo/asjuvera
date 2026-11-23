@@ -207,6 +207,7 @@ td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
           <button data-o="all" aria-pressed="true">모든 현황</button><button data-o="상담" aria-pressed="false">김은진(상담)</button><button data-o="창고" aria-pressed="false">최미영 실장(창고)</button>
         </div>
         <input type="text" id="q" placeholder="이름·연락처 뒷자리·접수번호·송장번호 검색 (완료 건 포함)">
+        <label class="btn" for="q-shot" style="cursor:pointer;white-space:nowrap">📷 송장으로 건 찾기</label><input type="file" id="q-shot" accept="image/*" capture="environment" hidden>
       </div>
       <div class="work">
         <div class="list" id="list"></div>
@@ -815,6 +816,27 @@ async function readWaybill(file){
     say(nums.length>1?`송장번호 ${nums.length}개를 읽었습니다. 첫 번째(${nums[0]})를 넣었습니다. 다른 번호: ${nums.slice(1).join(', ')} — 맞는지 확인하고 출고 완료를 눌러 주세요.`:`송장번호 ${nums[0]}를 읽어 넣었습니다. 맞는지 확인하고 출고 완료를 눌러 주세요.`);
   }catch(e){ say(e&&e.code==='not_granted'?'사진 읽기를 허용하지 않아 쓸 수 없습니다. 번호를 직접 넣어 주세요.':e&&e.code==='rate_limited'?'클로드 사용량이 잠시 막혔습니다. 조금 뒤 다시 하거나 번호를 직접 넣어 주세요.':'사진을 읽지 못했습니다. 번호를 직접 넣어 주세요.') }
 }
+/* 송장 사진으로 건 찾기: 박스를 뜯기 전에 송장을 찍으면 맞는 건을 찾아 연다. 사진·이름은 찾는 데만 쓰고 저장하지 않는다. */
+async function findByWaybill(file){
+  toast('송장을 읽는 중입니다…');
+  const s=await getSample(); if(!s) return toast('이 화면에서는 사진 읽기를 쓸 수 없습니다. 검색칸에 이름이나 번호를 넣어 주세요.');
+  let r; try{ r=await s.json('이 사진은 한국 택배 운송장(송장)입니다. 아래만 읽어 JSON으로만 답하세요. 형식: {"numbers":["운송장번호, 숫자만"],"name":"받는 분 또는 보내는 분 이름(보이면)","phone4":"전화번호 끝 4자리(보이면)"}. 운송장번호는 보통 10~13자리입니다. 읽을 수 없는 항목은 빈 값으로.',{images:[file],modelTier:'quick',cache:false}) }
+  catch(e){ return toast(e&&e.code==='not_granted'?'사진 읽기를 허용하지 않아 쓸 수 없습니다':'송장을 읽지 못했습니다. 다시 찍어 주세요') }
+  const nums=((r&&r.numbers)||[]).map(x=>String(x).replace(/\D/g,'')).filter(x=>x.length>=9);
+  const dg=v=>String(v||'').replace(/\D/g,'');
+  let hit=cases.filter(c=>nums.some(n=>n&&(dg(c.inTrack).includes(n)||dg(c.outTrack).includes(n)||(n.length>=10&&dg(c.inTrack)&&n.includes(dg(c.inTrack).replace(/0+$/,''))))));
+  let how='송장번호';
+  const p4=dg(r&&r.phone4).slice(-4), nm=String((r&&r.name)||'').replace(/\s/g,'');
+  if(!hit.length&&p4.length===4){hit=cases.filter(c=>dg(c.phone).endsWith(p4));how='전화번호 끝자리'}
+  if(hit.length>1&&nm){const h2=hit.filter(c=>String(c.name||'').replace(/\s/g,'').includes(nm.slice(0,2)));if(h2.length)hit=h2}
+  if(!hit.length&&nm.length>=2){hit=cases.filter(c=>String(c.name||'').replace(/\s/g,'')===nm);how='이름'}
+  const open=hit.filter(c=>!ST[c.stage].end); if(open.length) hit=open;
+  if(!hit.length){ q=nums[0]||''; $('q').value=q; renderStrip(); renderList(); return toast('맞는 건을 찾지 못했습니다'+(nums[0]?' (송장 '+nums[0]+')':'')+'. 새 접수로 등록하거나 직접 검색해 주세요.') }
+  if(hit.length===1){ const c=hit[0]; cat=catOf(c); q=''; $('q').value=''; filt='todo'; sel=c.id; dtab='do'; editH=-1; editInfo=false; show('todo'); sel=c.id; renderDetail(); return toast(how+'로 찾았습니다 → '+c.name+' · '+task(c).todo) }
+  cat=catOf(hit[0]); q=hit.map(c=>c.id).join(' '); filt='todo'; sel=null; show('todo');
+  renderListOf(hit); toast(how+'로 '+hit.length+'건이 맞습니다. 하나를 골라 주세요');
+}
+function renderListOf(arr){ const keep=visible; visible=()=>arr; renderList(); visible=keep }
 const saving=new Map(); // 건마다 저장을 한 번에 하나씩 보낸다 (연달아 눌러도 순서가 꼬이지 않게)
 function persist(c){
   if(!LIVE){dbSave(c);return}
@@ -861,6 +883,7 @@ $('q').oninput=e=>{q=e.target.value.trim();renderStrip();renderList()};
 const pick=r=>{sel=r.dataset.id;dtab='do';editH=-1;editInfo=false;refresh()};
 $('list').onclick=e=>{const r=e.target.closest('.row');if(r)pick(r)};
 $('list').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){const r=e.target.closest('.row');if(r){e.preventDefault();pick(r)}}};
+$('q-shot').onchange=e=>{ if(e.target.files&&e.target.files[0]){ findByWaybill(e.target.files[0]); e.target.value='' } };
 $('detail').onchange=e=>{ if(e.target&&e.target.id==='f-shot'&&e.target.files&&e.target.files[0]){ readWaybill(e.target.files[0]); e.target.value='' } };
 $('detail').onclick=e=>{const t=e.target.closest('[data-dt]');if(t){dtab=t.dataset.dt;editH=-1;editInfo=false;return renderDetail()}const b=e.target.closest('[data-a]');if(b)act(b.dataset.a,b)};
 $('v-trk').onclick=e=>{const b=e.target.closest('[data-go]');if(b)openCase(b.dataset.go)};
