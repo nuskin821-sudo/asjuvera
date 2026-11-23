@@ -59,6 +59,7 @@ textarea{width:100%;resize:vertical}
 .strip button span{font-size:13px;color:var(--sub);font-weight:500}
 .strip button em{font-style:normal;font-size:11.5px;color:var(--sub)}
 .strip button.hot b{color:var(--red)}
+.mic{padding:6px 10px;min-width:40px}.mic.on{background:var(--red);color:#fff;border-color:var(--red)}
 .strip .moreBtn{display:none}
 @media (max-width:700px){
   .strip{grid-template-columns:repeat(3,1fr);gap:6px}
@@ -851,6 +852,21 @@ async function findByWaybill(file){
   renderListOf(hit); toast(how+'로 '+hit.length+'건이 맞습니다. 하나를 골라 주세요');
 }
 function renderListOf(arr){ const keep=visible; visible=()=>arr; renderList(); visible=keep }
+
+/* 음성으로 메모 넣기 (컴퓨터 크롬·클로드 앱). 아이폰은 키보드 마이크를 쓴다. */
+let DICT=null, MIC_T=null;
+const MIC_IDS=['f-memo','f-memo2','f-note','n-raw'];
+function addMics(){ if(!DICT) return; MIC_IDS.forEach(id=>{const el=document.getElementById(id); if(!el||el.dataset.mic) return; el.dataset.mic='1';
+  const b=document.createElement('button'); b.type='button'; b.className='btn ghost mic'; b.dataset.micFor=id; b.title='말로 입력'; b.textContent='🎤';
+  el.insertAdjacentElement('afterend',b) }) }
+(async()=>{ try{ if(!window.claude||!window.claude.use) return; const d=await window.claude.use('dictation'); if(!d) return; DICT=d;
+  d.onFinal(({text})=>{ const el=MIC_T&&document.getElementById(MIC_T); if(el&&text){ el.value=(el.value?el.value.replace(/\s*$/,' '):'')+text.trim(); el.dispatchEvent(new Event('input',{bubbles:true})) } });
+  d.onState(({state})=>{ document.querySelectorAll('.mic').forEach(b=>{const on=state==='listening'&&b.dataset.micFor===MIC_T; b.classList.toggle('on',on); b.textContent=on?'⏹':'🎤'}) });
+  addMics(); new MutationObserver(addMics).observe(document.body,{childList:true,subtree:true});
+ }catch(e){} })();
+document.addEventListener('click',e=>{ const b=e.target.closest('.mic'); if(!b||!DICT) return; e.preventDefault(); e.stopPropagation();
+  if(b.classList.contains('on')){ DICT.stop().catch(()=>{}); return }
+  MIC_T=b.dataset.micFor; DICT.start().catch(err=>{ if(err&&err.code==='not_granted'){ DICT=null; document.querySelectorAll('.mic').forEach(x=>x.remove()); toast('마이크를 허용하지 않아 음성 입력을 숨겼습니다') } }) },true);
 const saving=new Map(); // 건마다 저장을 한 번에 하나씩 보낸다 (연달아 눌러도 순서가 꼬이지 않게)
 function persist(c){
   if(!LIVE){dbSave(c);return}
