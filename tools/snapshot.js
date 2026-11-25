@@ -2,6 +2,7 @@
 // 사용: node tools/snapshot.js <보드.html> <나올 파일.html> <기준시각 'YYYY-MM-DD HH:MM'> <탭이름=값파일.json[:시작행]> ...
 // 값파일은 {values:[[...]]} 모양. 고객 이름은 가운데를 가리고, 연락처·주소는 싣지 않는다.
 const fs = require('fs'), path = require('path');
+const { stableId } = require('./ids');
 const [board, out, at, ...tabArgs] = process.argv.slice(2);
 const src = fs.readFileSync(path.join(__dirname, '..', 'apps-script', 'Code.gs'), 'utf8');
 const stub = { SpreadsheetApp: {}, Session: {}, LockService: {}, HtmlService: {}, Utilities: { formatDate: () => at } };
@@ -25,10 +26,9 @@ for (const a of tabArgs) {
     if (!v[G.I.name] && !v[G.I.product]) continue;
     const d = G.date_(v[G.I.date]) || G.date_(v[G.I.applied]);
     if (!d || d < G.CUTOFF) continue;
-    const pre = 'AS-' + d.slice(2).replace(/-/g, '') + '-'; let k = 1; while (ids[pre + ('0' + k).slice(-2)]) k++;
-    v[21] = pre + ('0' + k).slice(-2); ids[v[21]] = 1; v[22] = '';
+    v[21] = 'tmp'; v[22] = '';
     const c = G.toCase_(tab, v).c; if (done) c.stage = 'done';
-    c.name = String(c.name || '').trim(); c.phone = maskPhone(c.phone); c.addr = ''; c.symptom = clean(c.symptom, 60); c.sheetMemo = clean(c.sheetMemo, 60); c.sheetProg = clean(c.sheetProg, 60);
+    c.name = String(c.name || '').trim(); c.id = stableId(c.recv, c.name, c.product, ids); c.phone = maskPhone(c.phone); c.addr = ''; c.symptom = clean(c.symptom, 60); c.sheetMemo = clean(c.sheetMemo, 60); c.sheetProg = clean(c.sheetProg, 60);
     if (c.sheetNote) c.sheetNote = '시트 진행사항 확인: ' + c.sheetProg;
     if (c.alert) c.alert.x = '시트 진행사항: ' + c.sheetProg;
     c.inspect = clean(c.inspect, 30); c.outTrack = '';

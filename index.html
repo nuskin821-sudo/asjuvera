@@ -815,7 +815,7 @@ async function initShared(){
   if(LIVE||!window.claude||!window.claude.use) return;
   const db=await window.claude.use('db'); if(!db) return; DB=db;
   try{const u=await window.claude.use('user'); if(u){const m=await u.me(); ME={id:m.id,name:m.name||''}}}catch(e){}
-  $('badge').textContent='공유 판 · 누르면 모두에게 바로 저장됩니다 (시트 반영은 AS 창이 평일에)'; $('badge').className='proto live';
+  $('badge').textContent='공유 판 · 누르면 모두에게 바로 저장됩니다 · 시트에는 평일 1시간마다 반영(P열 업무판 메모)'; $('badge').className='proto live';
   if(ME&&ME.name){$('meBox').hidden=true;$('meLive').hidden=false;$('meLive').textContent=ME.name}
   let timer=setTimeout(()=>toast('공유 저장소에 아직 연결되지 않았습니다. 잠시 뒤 다시 열어 주세요'),10000);
   DB.collection('cases').onSnapshot(sn=>{ if(!sn.metadata.fromCache) clearTimeout(timer);
