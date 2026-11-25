@@ -2,7 +2,7 @@
 // 사용: node tools/snapshot.js <보드.html> <나올 파일.html> <기준시각 'YYYY-MM-DD HH:MM'> <탭이름=값파일.json[:시작행]> ...
 // 값파일은 {values:[[...]]} 모양. 고객 이름은 가운데를 가리고, 연락처·주소는 싣지 않는다.
 const fs = require('fs'), path = require('path');
-const { stableId } = require('./ids');
+const { scan } = require('./rows');
 const [board, out, at, ...tabArgs] = process.argv.slice(2);
 const src = fs.readFileSync(path.join(__dirname, '..', 'apps-script', 'Code.gs'), 'utf8');
 const stub = { SpreadsheetApp: {}, Session: {}, LockService: {}, HtmlService: {}, Utilities: { formatDate: () => at } };
@@ -10,37 +10,34 @@ const G = new Function(...Object.keys(stub), src + ';return {toCase_,date_,I,CUT
 const mask = n => { n = String(n || '').trim().split(/\s+/)[0]; return n.length <= 1 ? n : n.length === 2 ? n[0] + '○' : n[0] + '○'.repeat(n.length - 2) + n[n.length - 1]; };
 const maskPhone = p => { const d = String(p || '').replace(/\D/g, ''); return d.length >= 8 ? d.slice(0, 3) + '-****-' + d.slice(-4) : ''; };
 const clean = (s, n) => String(s || '').replace(/\d[\d\- ]{6,}\d/g, '***').replace(/\s+/g, ' ').trim().slice(0, n);
-const cases = [], ids = {}, stats = {};
+const cases = [], stats = {}, asTabs = [];
 let reports = [];
 for (const a of tabArgs) {
   if (a.startsWith('reports=')) { const dir = a.slice(8); reports = fs.readdirSync(dir).filter(f => f.endsWith('.json')).map(f => { const d = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')); const x = d.data || d; return { id: f.replace(/\.json$/, ''), title: x.title, at: x.at, status: x.status, reply: x.reply || '', body: x.body || '', update: x.update || '' }; }); continue; }
   if (a.startsWith('hs=')) { const l = JSON.parse(fs.readFileSync(a.slice(3), 'utf8')); l.forEach(c => cases.push(c)); stats['현대홈쇼핑반품'] = l.length; continue; }
-  const [tab, rest] = a.split('='); const [file] = rest.split(':');
-  const rows = JSON.parse(fs.readFileSync(file, 'utf8')).values || [];
-  const done = tab === G.DONE_TAB;
-  let list = rows.filter(v => v && v.length && v[0] !== '접수일자');
-  if (done) list = list.slice(-150);
-  let n = 0;
-  for (const r of list) {
-    const v = []; for (let i = 0; i < G.NCOL; i++) v.push(r[i] == null ? '' : String(r[i]));
-    if (!v[G.I.name] && !v[G.I.product]) continue;
-    const d = G.date_(v[G.I.date]) || G.date_(v[G.I.applied]);
-    if (!d || d < G.CUTOFF) continue;
-    v[21] = 'tmp'; v[22] = '';
-    const c = G.toCase_(tab, v).c; if (done) c.stage = 'done';
-    c.name = String(c.name || '').trim(); c.id = stableId(c.recv, c.name, c.product, ids); c.phone = maskPhone(c.phone); c.addr = ''; c.symptom = clean(c.symptom, 60); c.sheetMemo = clean(c.sheetMemo, 60); c.sheetProg = clean(c.sheetProg, 60);
-    if (c.sheetNote) c.sheetNote = '시트 진행사항 확인: ' + c.sheetProg;
-    if (c.alert) c.alert.x = '시트 진행사항: ' + c.sheetProg;
-    c.inspect = clean(c.inspect, 30); c.outTrack = '';
-    c.hist = [{ t: c.recv, who: '시트', x: '[' + tab + '] 탭' + (c.sheetProg ? ' · 진행사항: ' + c.sheetProg : '') + (c.sheetMemo ? ' · 비고: ' + c.sheetMemo : '') }];
-    cases.push(c); n++;
-  }
-  stats[tab] = n;
+  const [tab, rest] = a.split('='); const [file, start] = rest.split(':');
+  let rows = JSON.parse(fs.readFileSync(file, 'utf8')).values || [];
+  let st = +(start || 1);
+  if (tab === G.DONE_TAB && rows.length > 150) { st += rows.length - 150; rows = rows.slice(-150); }
+  asTabs.push({ name: tab, start: st, rows });
+}
+const { recs, dupes } = scan(asTabs);
+for (const x of recs) {
+  const r = x.r, tab = x.tab, done = tab === G.DONE_TAB;
+  const v = []; for (let i = 0; i < G.NCOL; i++) v.push(r[i] == null ? '' : String(r[i]));
+  v[21] = 'tmp'; v[22] = '';
+  const c = G.toCase_(tab, v).c; if (done) c.stage = 'done';
+  c.name = String(c.name || '').trim(); c.id = x.id; c.phone = maskPhone(c.phone); c.addr = ''; c.symptom = clean(c.symptom, 60); c.sheetMemo = clean(c.sheetMemo, 60); c.sheetProg = clean(c.sheetProg, 60);
+  if (c.sheetNote) c.sheetNote = '시트 진행사항 확인: ' + c.sheetProg;
+  if (c.alert) c.alert.x = '시트 진행사항: ' + c.sheetProg;
+  c.inspect = clean(c.inspect, 30); c.outTrack = '';
+  c.hist = [{ t: c.recv, who: '시트', x: '[' + tab + '] 탭' + (c.sheetProg ? ' · 진행사항: ' + c.sheetProg : '') + (c.sheetMemo ? ' · 비고: ' + c.sheetMemo : '') }];
+  cases.push(c); stats[tab] = (stats[tab] || 0) + 1;
 }
 const html = fs.readFileSync(board, 'utf8');
 const mark = '<script>\n/* 실제 운영';
 if (!html.includes(mark)) throw new Error('보드 파일에서 넣을 자리를 찾지 못했습니다');
-const inj = '<script>window.AS_SNAPSHOT=' + JSON.stringify({ at, cases }).replace(/</g, '\\u003c') + ';window.AS_REPORTS=' + JSON.stringify(reports).replace(/</g, '\\u003c') + ';</script>\n';
+const inj = '<script>window.AS_SNAPSHOT=' + JSON.stringify({ at, cases, dupes: dupes.map(d => ({ id: d.id, keep: d.keep.tab, drop: d.drop.map(x => x.tab) })) }).replace(/</g, '\\u003c') + ';window.AS_REPORTS=' + JSON.stringify(reports).replace(/</g, '\\u003c') + ';</script>\n';
 fs.writeFileSync(out, html.replace(mark, inj + mark));
 const by = {}; cases.forEach(c => by[c.stage] = (by[c.stage] || 0) + 1);
-console.log(JSON.stringify({ at, total: cases.length, tabs: stats, stages: by }));
+console.log(JSON.stringify({ at, total: cases.length, tabs: stats, stages: by, dupes: dupes.length }));

@@ -60,6 +60,7 @@ textarea{width:100%;resize:vertical}
 .strip button em{font-style:normal;font-size:11.5px;color:var(--sub)}
 .strip button.hot b{color:var(--red)}
 .mic{padding:6px 10px;min-width:40px}.mic.on{background:var(--red);color:#fff;border-color:var(--red)}
+#syncBar{margin-top:8px;font-size:13px;color:var(--sub)}#syncBar.warn{color:var(--red);font-weight:600;cursor:pointer}
 .strip .moreBtn{display:none}
 @media (max-width:700px){
   .strip{grid-template-columns:repeat(3,1fr);gap:6px}
@@ -215,6 +216,7 @@ td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
   <section id="v-todo">
     <div style="display:flex;flex-direction:column;gap:10px">
       <div class="strip" id="strip"></div>
+      <div id="syncBar" hidden></div>
       <div class="bar">
         <div class="seg" id="ownerSeg">
           <button data-o="all" aria-pressed="true">모든 현황</button><button data-o="상담" aria-pressed="false">김은진(상담)</button><button data-o="창고" aria-pressed="false">최미영 실장(창고)</button>
@@ -462,6 +464,7 @@ function renderStrip(){
   const items=[['todo','지금 할 일 전체',cnt(c=>{const t=task(c);return !t.wait&&!t.end}),'',0],
    ...GROUPS.map(([g,l,o])=>[g,l,cnt(c=>inGroup(c,g)),disp(o),['alert','inspect','notify'].includes(g)]),
    ['wait','기다리는 중',cnt(c=>task(c).wait),'자동 감시',0],['hold','보류',cnt(c=>c.stage==='hold'),'',0],['done','완료·종결',cnt(c=>ST[c.stage].end&&c.stage!=='hold'),'',0]];
+  renderSync();
   $('strip').innerHTML=items.map(([k,l,n,o,h])=>`<button data-f="${k}" aria-pressed="${filt===k&&!q}" class="${h&&n?'hot':''} ${['wait','hold','done'].includes(k)?'more':(!n&&k!=='todo'&&!(filt===k&&!q)?'z':'')}"><b>${n}</b><span>${l}</span><em>${o||'&nbsp;'}</em></button>`).join('')
    +`<button class="moreBtn" data-more="1"><span>${$('strip').classList.contains('open')?'접기 ▴':'대기·보류·완료 ▾'}</span></button>`;
 }
@@ -474,6 +477,7 @@ function renderList(){
       <span class="who ${oc}">${esc(disp(t.own))}</span>
       <span class="full">${stepBar(c)}</span>
       ${why?`<span class="meta full" style="color:var(--red);font-weight:600">${esc(why)}</span>`:''}
+      ${syncWarn(c)?`<span class="meta full" style="color:var(--red);font-weight:600">⚠ ${esc(syncWarn(c))}</span>`:''}
       <span class="meta full"><span class="kind" style="background:var(--soft);color:var(--ink)">${esc(ctypeOf(c))}</span>${triPill(c)}<span class="when">${sh(c.recv)} 접수</span> · ${esc(c.inflow)} · <b>${esc(c.name)}</b></span></div>`}).join('')
    :`<div class="empty">${q?'검색 결과가 없습니다.':'이 칸에는 지금 할 일이 없습니다.'}</div>`;
 }
@@ -819,7 +823,7 @@ async function initShared(){
   if(ME&&ME.name){$('meBox').hidden=true;$('meLive').hidden=false;$('meLive').textContent=ME.name}
   let timer=setTimeout(()=>toast('공유 저장소에 아직 연결되지 않았습니다. 잠시 뒤 다시 열어 주세요'),10000);
   DB.collection('cases').onSnapshot(sn=>{ if(!sn.metadata.fromCache) clearTimeout(timer);
-    sn.docChanges().forEach(ch=>{ if(ch.type==='removed') return; const d=ch.doc.data(); if(!d||!d.json) return;
+    sn.docChanges().forEach(ch=>{ if(ch.type==='removed') return; const d=ch.doc.data(); if(ch.doc.id==='_sync'){try{SYNC=JSON.parse(d.sync)}catch(e){} return} if(!d||!d.json) return;
       let c; try{c=C(JSON.parse(d.json))}catch(e){return} const i=cases.findIndex(x=>x.id===ch.doc.id); if(i>=0) cases[i]=c; else cases.push(c) });
     const busy=document.activeElement&&$('detail').contains(document.activeElement)&&/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName);
     renderStrip();renderList(); if(!busy) renderDetail(); if(!$('v-boss').hidden)renderBoss(); if(!$('v-trk').hidden)renderTrk();
@@ -879,6 +883,12 @@ function addMics(){ if(!DICT) return; MIC_IDS.forEach(id=>{const el=document.get
 document.addEventListener('click',e=>{ const b=e.target.closest('.mic'); if(!b||!DICT) return; e.preventDefault(); e.stopPropagation();
   if(b.classList.contains('on')){ DICT.stop().catch(()=>{}); return }
   MIC_T=b.dataset.micFor; DICT.start().catch(err=>{ if(err&&err.code==='not_granted'){ DICT=null; document.querySelectorAll('.mic').forEach(x=>x.remove()); toast('마이크를 허용하지 않아 음성 입력을 숨겼습니다') } }) },true);
+/* 시트 반영 상태: AS 창이 시트에 옮기고 남긴 결과. 못 넣은 건과 시트에 두 줄 있는 건을 빨갛게 알려 준다. */
+let SYNC=null;
+function syncWarn(c){ if(!SYNC) return ''; const s=(SYNC.skipped||[]).find(x=>x.id===c.id); if(s) return '시트에 못 넣음 · '+s.why; const d=(SYNC.dupes||[]).find(x=>x.id===c.id); if(d) return '시트에 같은 건이 두 줄 · '+d.keep+'에 반영, '+d.drop+'은 정리 필요'; return '' }
+function renderSync(){ const el=$('syncBar'); if(!el) return; if(!SYNC){el.hidden=true;return}
+  const n=(SYNC.skipped||[]).length, m=(SYNC.dupes||[]).length; el.hidden=false; el.className=n||m?'warn':'';
+  el.textContent='시트 반영 '+(SYNC.at||'')+(SYNC.wrote?' · 이번에 '+SYNC.wrote+'줄':'')+(n?' · ⚠ 시트에 못 넣은 건 '+n:'')+(m?' · ⚠ 시트에 두 줄인 건 '+m:'')+(n||m?' (눌러서 보기)':' · 모두 반영됨') }
 const saving=new Map(); // 건마다 저장을 한 번에 하나씩 보낸다 (연달아 눌러도 순서가 꼬이지 않게)
 function persist(c){
   if(!LIVE){dbSave(c);return}
@@ -925,6 +935,7 @@ $('q').oninput=e=>{q=e.target.value.trim();renderStrip();renderList()};
 const pick=r=>{sel=r.dataset.id;dtab='do';editH=-1;editInfo=false;refresh()};
 $('list').onclick=e=>{const r=e.target.closest('.row');if(r)pick(r)};
 $('list').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){const r=e.target.closest('.row');if(r){e.preventDefault();pick(r)}}};
+$('syncBar').onclick=()=>{ if(!SYNC) return; const ids=[...(SYNC.skipped||[]),...(SYNC.dupes||[])].map(x=>x.id); if(!ids.length) return; const arr=cases.filter(c=>ids.includes(c.id)); if(!arr.length) return toast('해당 건이 이 화면에 없습니다'); cat=catOf(arr[0]); filt='todo'; sel=null; show('todo'); renderListOf(arr); toast('시트에 반영되지 않은 건 '+arr.length+'건') };
 $('q-shot').onchange=e=>{ if(e.target.files&&e.target.files[0]){ findByWaybill(e.target.files[0]); e.target.value='' } };
 $('detail').onchange=e=>{ if(e.target&&e.target.id==='f-shot'&&e.target.files&&e.target.files[0]){ readWaybill(e.target.files[0]); e.target.value='' } };
 $('detail').onclick=e=>{const t=e.target.closest('[data-dt]');if(t){dtab=t.dataset.dt;editH=-1;editInfo=false;return renderDetail()}const b=e.target.closest('[data-a]');if(b)act(b.dataset.a,b)};
