@@ -478,6 +478,10 @@ function renderList(){
 }
 
 /* ---------- 상세 ---------- */
+const RET_FORM=`<p><b>반품</b> 건입니다. 창고 입고 후 개봉/미개봉을 확인하고, 파트너시스템에서 회수확정한 뒤 종료하세요. 출고는 없습니다.</p><label class="field">제품 상태<select id="f-open"><option>미개봉</option><option>개봉 · 이상 없음</option><option>개봉 · 사용 흔적/훼손</option></select></label><label class="field">메모 (선택)<input type="text" id="f-note" placeholder="예: 구성품 모두 있음"></label>`;
+function shipForm(c){ return `<p>${c.plan==='normal'||c.plan==='return'?'받은 제품을 착불로 재발송':'새 제품 교환 출고'}합니다. 송장을 넣으면 출고 안내 문자(택배사·송장번호 포함)가 준비되고 완료됩니다.</p><div class="formgrid"><label class="field">택배사<select id="f-car">${CARRIERS.map(o=>`<option ${o===(c.outCarrier||'')?'selected':''}>${o}</option>`).join('')}</select></label><label class="field">선불/착불<select id="f-pay">${['선불','착불'].map(o=>`<option ${o===(c.payType||(c.plan==='normal'||c.plan==='return'?'착불':'선불'))?'selected':''}>${o}</option>`).join('')}</select></label><label class="field">출고 송장번호<input type="text" id="f-out" placeholder="예: 2645-0000-0000"></label></div>
+    <div class="acts" ${SAMPLE_OK===false?'hidden':''}><label class="btn ghost" for="f-shot" style="cursor:pointer">📷 송장 사진으로 번호 넣기</label><input type="file" id="f-shot" accept="image/*" capture="environment" hidden></div>
+    <p id="f-shot-msg" style="font-size:13px;color:var(--sub)">송장 사진을 올리면 번호와 택배사를 읽어 칸에 넣습니다. 사진은 번호를 읽는 데만 쓰고 저장하지 않습니다.</p>` }
 function nextBox(c){
   const t=task(c), w=warranty(c), blk=w.k==='paid'&&BLOCKED[c.fam], a=t.alert;
   let body='',acts='';
@@ -486,6 +490,11 @@ function nextBox(c){
     if(a.type==='fail') acts=`<button class="btn" data-a="clear">재수거 접수했음</button><button class="btn ghost" data-a="hold">고객 연락 안 됨 → 보류</button>`;
     if(a.type==='nopick') acts=`<button class="btn" data-a="markPicked">수거된 것 확인함</button><button class="btn ghost" data-a="clear">재수거 접수했음</button><button class="btn ghost" data-a="hold">보류</button>`;
     if(a.type==='stale') acts=`<button class="btn" data-a="clear">택배사 확인했음 (이동 중)</button><button class="btn ghost" data-a="arrive">창고 도착 확인됨</button>`;
+    if(a.type==='hs'){
+      if(c.stage==='ship'&&ctypeOf(c)!=='반품'){ body+=shipForm(c); acts=`<button class="btn" data-a="shipDone">재출고 완료 → 종료</button>`; }
+      else if(ctypeOf(c)==='반품'&&/입고/.test(t.todo)&&!/여부 확인 \(/.test(t.todo)){ body+=RET_FORM; acts=`<button class="btn" data-a="returnClose">회수확정 → 반품 종료</button>`; }
+      else acts=`<button class="btn" data-a="hsDone">확인함 → 종료</button><button class="btn ghost" data-a="hold">보류</button>`;
+    }
     if(a.type==='overdue') acts=`<button class="btn" data-a="clear">재안내 보냈음</button><button class="btn ghost" data-a="paid">입금 확인됨</button><button class="btn ghost" data-a="nopay">진행 안 함 → 착불 반송</button><button class="btn ghost" data-a="nopayClose">진행 안 함 → 종료</button>`;
   } else if(c.stage==='judge'){
     body=`<p>자동 판정: <span class="tag ${blk?'no':w.k}">${blk?'접수 불가':w.k==='free'?'무상':'유상 '+won(w.fee)}</span> ${esc(blk||w.label)}</p>`;
@@ -503,6 +512,8 @@ function nextBox(c){
     const rt=ctypeOf(c)==='반품';
     body=`<p>${rt?'<b>반품</b> 건입니다. 이상이 없으면 회수 완료로 끝내고, 문제가 있으면 결과를 골라 상담에게 넘깁니다.':'상자를 열어 확인한 결과를 고르세요.'}</p><label class="field">검사 결과<select id="f-sym">${(rt?['반품 제품 이상 없음',...SYMPTOMS.filter(x=>x!=='반품 제품 이상 없음')]:SYMPTOMS).map(s=>`<option>${s}</option>`).join('')}</select></label><label class="field">창고 메모 · 기타 내용 (기타를 고르면 꼭 적어 주세요)<input type="text" id="f-note" placeholder="예: 충전선 없이 본품만 옴 / 반품 제품 박스 훼손"></label>`;
     acts=(rt?`<button class="btn" data-a="returnClose">이상 없음 → 반품 회수 완료·종료</button>`:'')+`<button class="btn ${rt?'ghost':''}" data-a="inspectDone">검사 결과 저장 → ${esc(disp('상담'))}에게 넘김</button>`;
+  } else if(c.stage==='notify'&&catOf(c)==='hs'&&ctypeOf(c)==='반품'){
+    body=RET_FORM; acts=`<button class="btn" data-a="returnClose">회수확정 → 반품 종료</button><button class="btn ghost" data-a="hold">보류</button>`;
   } else if(c.stage==='notify'){
     const p=c.plan, u=dueInfo(c);
     body=`<p>검사 결과 <b>${esc(c.inspect)}</b> → ${p==='normal'?'정상작동, 착불 재발송':p==='free'?'무상 교환':p==='rtcheck'?'반품 제품 문제 확인':'유상 '+won(w.fee)}. '안내문' 탭의 문구를 보내고 눌러 주세요.</p>${u?`<p><b>${u.txt}</b></p>`:''}`;
@@ -510,10 +521,10 @@ function nextBox(c){
   } else if(c.stage==='pay'){
     body=`<p>${md(c.payAsk)} 비용 안내 · ${days(c.payAsk)}일째 입금 기다리는 중. 3일이 지나면 재안내 표시가 뜹니다.</p>`;
     acts=`<button class="btn" data-a="paid">입금 확인됨</button><button class="btn ghost" data-a="nopay">진행 안 함 → 착불 반송</button><button class="btn ghost" data-a="nopayClose">진행 안 함 → 종료</button>`;
+  } else if(c.stage==='ship'&&ctypeOf(c)==='반품'){
+    body=RET_FORM; acts=`<button class="btn" data-a="returnClose">회수확정 → 반품 종료</button>`;
   } else if(c.stage==='ship'){
-    body=`<p>${c.plan==='normal'||c.plan==='return'?'받은 제품을 착불로 재발송':'새 제품 교환 출고'}합니다. 송장을 넣으면 출고 안내 문자(택배사·송장번호 포함)가 준비되고 완료됩니다.</p><div class="formgrid"><label class="field">택배사<select id="f-car">${CARRIERS.map(o=>`<option ${o===(c.outCarrier||'')?'selected':''}>${o}</option>`).join('')}</select></label><label class="field">선불/착불<select id="f-pay">${['선불','착불'].map(o=>`<option ${o===(c.payType||(c.plan==='normal'||c.plan==='return'?'착불':'선불'))?'selected':''}>${o}</option>`).join('')}</select></label><label class="field">출고 송장번호<input type="text" id="f-out" placeholder="예: 2645-0000-0000"></label></div>
-    <div class="acts" ${SAMPLE_OK===false?'hidden':''}><label class="btn ghost" for="f-shot" style="cursor:pointer">📷 송장 사진으로 번호 넣기</label><input type="file" id="f-shot" accept="image/*" capture="environment" hidden></div>
-    <p id="f-shot-msg" style="font-size:13px;color:var(--sub)">송장 사진을 올리면 번호와 택배사를 읽어 칸에 넣습니다. 사진은 번호를 읽는 데만 쓰고 저장하지 않습니다.</p>`;
+    body=shipForm(c);
     acts=`<button class="btn" data-a="shipDone">출고 완료</button>`;
   } else if(c.stage==='hold'){
     body=`<p>보류 중입니다. 다시 진행할 때 눌러 주세요.</p>`; acts=`<button class="btn" data-a="resume">다시 진행 (판정부터)</button><button class="btn ghost" data-a="close">종결</button>`;
@@ -616,7 +627,7 @@ function act(a,btn){
      c.plan=rt?'rtcheck':(s==='정상작동'||s==='반품 제품 이상 없음')?'normal':w.k==='free'?'free':'paid';
      if(c.plan==='free'){c.stage='ship';log(c,'검사: '+s+(note&&!s.startsWith('기타')?' · '+note:'')+' → 무상 교환 (안내 생략, 바로 출고)');break}
      c.stage='notify';log(c,'검사: '+s+(note&&!s.startsWith('기타')?' · '+note:''));break}
-   case 'returnClose': {const note=val('f-note'); c.inspect=c.inspect||'반품 제품 이상 없음'; c.stage='done';c.plan='returned';log(c,'반품 회수 완료 → 종료'+(note?' · '+note:''));break}
+   case 'returnClose': {const op=val('f-open'); const note=[op,val('f-note')].filter(Boolean).join(' · '); c.inspect=c.inspect||'반품 제품 이상 없음'; c.stage='done';c.plan='returned';log(c,'반품 회수 완료 → 종료'+(note?' · '+note:''));break}
    case 'nopayClose': c.alert=null;c.stage='closed';c.closeWhy='유상AS 진행 안 함';log(c,'유상 진행 안 함 → 종료');break;
    case 'undo': {if(!c._undo) return; const h=c.hist; const back=JSON.parse(c._undo); Object.keys(c).forEach(k=>{if(k!=='hist'&&k!=='id'&&k!=='rev') delete c[k]}); Object.assign(c,back); c.hist=h; delete c._undo; log(c,'이전 단계로 되돌림 → '+task(c).todo); break}
    case 'notifyDone': if(c.plan==='paid'){c.stage='pay';c.fee=w.fee;c.payAsk=iso(NOW());log(c,'비용 '+won(w.fee)+' 안내 완료')}else{c.stage='ship';log(c,(c.plan==='normal'?'정상작동 재발송':'무상 교환')+' 안내 완료')}break;
@@ -627,6 +638,7 @@ function act(a,btn){
    case 'hold': c.alert=null;c.stage='hold';log(c,'보류로 옮김');break;
    case 'resume': c.stage='judge';log(c,'보류 해제');break;
    case 'close': c.stage='closed';log(c,'종결');break;
+   case 'hsDone': c.stage='done';log(c,'확인 완료 → 종료');break;
    case 'memo': {const m=val('f-memo')||val('f-memo2'); if(!m) return toast('메모 내용을 적어 주세요'); log(c,m);break}
    case 'editHist': editH=+btn.dataset.i; return renderDetail();
    case 'cancelHist': editH=-1; return renderDetail();
