@@ -27,5 +27,20 @@ for (const it of all) {
   c.hist = [{ t: c.recv, who: '파트너시스템', x: it.kind + ' · ' + (it.step || '') + ' · ' + (it.reason || '') }];
   out.push(c);
 }
+// 협력사 CS(미답변·미완료): 가장 최근 csOpenMMDD 묶음. 주문번호가 없으므로 번호는 내용으로 만든다(날이 바뀌어도 같은 건이면 같은 번호).
+const csKey = Object.keys(d).filter(k => /^csOpen\d{4}$/.test(k)).sort().pop();
+const hash4 = t => { let h = 0x811c9dc5; for (const ch of Buffer.from(t, 'utf8')) { h ^= ch; h = Math.imul(h, 0x01000193) >>> 0; } return (h % 1679616).toString(36).toUpperCase().padStart(4, '0'); };
+let cs = 0;
+if (csKey) for (const it of (d[csKey].items || [])) {
+  const day = String(d[csKey].readAt || '').slice(0, 10), prod = String(it.product || '').replace(/^(\[[^\]]+\])+\s*/, '').replace(/^쥬베라\s*/, '');
+  const c = { id: 'HSP-CS-' + hash4([it.type, it.content, it.product].join('|')), inflow: '현대홈쇼핑', sub: '파트너시스템 · 협력사 CS', recv: day + ' 09:00',
+    name: '협력사 CS · ' + (it.type || '문의'), phone: '', addr: '', fam: /베라건/.test(prod) ? '베라건' : /베이직/.test(prod) ? '베이직 미니' : '기타', product: prod, buy: '', shop: '현대홈쇼핑', symptom: it.content || '',
+    method: '수거', inTrack: '', outTrack: '', inspect: '', plan: '', alert: null, tin: [], tout: [], rev: 0, sheetTab: '파트너시스템(협력사 CS)', sheetProg: it.status || '', sheetMemo: '',
+    stage: 'judge', hsTodo: '현대 협력사 CS 답변 필요', hsOwn: '상담', hsRed: 1, hsWhy: [it.status, it.lastFromHyundai].filter(Boolean).join(' · ').slice(0, 120) };
+  c.hist = [it.prevAnswer && { t: c.recv, who: '파트너시스템', x: '이전 답변: ' + it.prevAnswer }, it.lastFromHyundai && { t: c.recv, who: '파트너시스템', x: '현대 요청: ' + it.lastFromHyundai }].filter(Boolean);
+  if (!c.hist.length) c.hist = [{ t: c.recv, who: '파트너시스템', x: (it.status || '') + ' · ' + (it.content || '') }];
+  out.push(c); cs++;
+}
+const latest = Object.values(d).map(v => v && v.readAt).concat(d.readAt).filter(Boolean).sort().pop();
 fs.writeFileSync(1, JSON.stringify(out));
-process.stderr.write(JSON.stringify({ readAt: d.readAt, partner: all.length, added: out.length, alreadyInSheet: skipped }) + '\n');
+process.stderr.write(JSON.stringify({ readAt: d.readAt, latestReadAt: latest, partner: all.length, added: out.length, alreadyInSheet: skipped, csOpen: cs }) + '\n');
