@@ -17,7 +17,7 @@
 - 고객 이름·전화·주소는 원장·보고에 적지 않는다(접수번호와 상태만).
 
 ## 순서
-1. 먼저 `rm -rf /home/user/as-data/dbNOW` (예전 파일이 남아 있으면 새로 받아 오지 않는다). 그다음 업무판 저장분 중 **어제 0시 이후 바뀐 것만** 읽는다: `ArtifactData query` (url 위, collection `cases`, query `{"limit":500,"where":[["at",">=","<어제 날짜 YYYY-MM-DD> 00:00"]]}`, **out_dir `/home/user/as-data/dbNOW`**). 전체 `list`는 화면에 너무 많이 나오므로 쓰지 않는다. 내용은 화면에 띄우지 않는다.
+1. 업무판 저장분 중 **바뀐 것만** 읽는다: `ArtifactData query` (url 위, collection `cases`, query `{"limit":500,"where":[["at",">=","<지난 회차 시각 또는 어제 날짜 00:00>"]]}`, **out_dir은 회차마다 새 폴더** 예: `/home/user/as-data/db-MMDD-HHMM`). 같은 폴더를 다시 쓰면 예전 파일이 남아 새로 받아 오지 않는다. 전체 `list`는 화면에 너무 많이 나오므로 쓰지 않는다. 아래 명령의 `dbNOW/cases` 자리에 이 폴더의 `cases`를 넣는다.
 2. 밀린 것 있는지: `node tools/sync.js pending /home/user/as-data/dbNOW/cases /home/user/as-data/sync/state.json "2026-11-25 00:00"`
    - `pending` 0이고 `oldStyleIds`가 비었으면 **여기서 끝**(시트를 읽지 않는다).
    - `oldStyleIds`(AS-yymmdd-NN 꼴)가 있으면 옛 화면에서 저장된 것 → `tools/dbfix.js`로 새 번호로 옮긴다(목록 출력의 version을 if_version으로).
@@ -31,7 +31,7 @@
      - 옮김: `copyPaste` as 그 줄(A:Q, endColumnIndex 17) → 수거완료 '옮김 행', PASTE_NORMAL → `deleteDimension` as 그 줄 → `appendDimension` as 1줄. 여러 줄이면 **아래 줄부터** 지운다(계획이 그 순서로 나온다).
      - sheetId: as 111783976 · 수거완료 1856335090 · 출고예정 870760180 · 유상AS입금대기 691211646 · 보류 220357409 · 처리완료 841485114
    - 번호 붙이기: 탭마다 `update_values` 한 번, range와 values는 qfill.json 그대로(null 칸은 건너뛴다).
-7. 다시 읽기(3과 같음) → `tools/syncplan.sh check <새 파일>` 이 전부 OK → `node tools/sync.js commit /home/user/as-data/sync/plan.json /home/user/as-data/sync/state.json`
+7. 다시 읽기(3과 같음. 한두 칸만 썼으면 그 칸의 `P:Q`만 다시 읽어 번호와 글이 맞는지 봐도 된다) → `tools/syncplan.sh check <새 파일>` 이 전부 OK → `node tools/sync.js commit /home/user/as-data/sync/plan.json /home/user/as-data/sync/state.json`
 8. 상태 알리기: `tools/syncstatus.sh <쓴 줄 수>` → `ArtifactData get`(cases/_sync)로 version을 보고 `set`(file_path `/home/user/as-data/sync/_sync.json`, if_version). 업무판 위에 "시트 반영 시각 · 못 넣은 건 · 두 줄인 건"이 뜬다.
 9. 쓴 것이 있으면 원장에 한 줄(접수번호·줄 수만). 없으면 아무것도 남기지 않는다.
 
