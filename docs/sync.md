@@ -17,7 +17,7 @@
 - 고객 이름·전화·주소는 원장·보고에 적지 않는다(접수번호와 상태만).
 
 ## 순서
-1. 먼저 `rm -rf /home/user/as-data/dbNOW` (예전 파일이 남아 있으면 새로 받아 오지 않는다). 그다음 업무판 저장분 읽기: `ArtifactData list` (url 위, collection `cases`, query limit 500, **out_dir `/home/user/as-data/dbNOW`**). 내용은 화면에 띄우지 않는다.
+1. 먼저 `rm -rf /home/user/as-data/dbNOW` (예전 파일이 남아 있으면 새로 받아 오지 않는다). 그다음 업무판 저장분 중 **어제 0시 이후 바뀐 것만** 읽는다: `ArtifactData query` (url 위, collection `cases`, query `{"limit":500,"where":[["at",">=","<어제 날짜 YYYY-MM-DD> 00:00"]]}`, **out_dir `/home/user/as-data/dbNOW`**). 전체 `list`는 화면에 너무 많이 나오므로 쓰지 않는다. 내용은 화면에 띄우지 않는다.
 2. 밀린 것 있는지: `node tools/sync.js pending /home/user/as-data/dbNOW/cases /home/user/as-data/sync/state.json "2026-11-25 00:00"`
    - `pending` 0이고 `oldStyleIds`가 비었으면 **여기서 끝**(시트를 읽지 않는다).
    - `oldStyleIds`(AS-yymmdd-NN 꼴)가 있으면 옛 화면에서 저장된 것 → `tools/dbfix.js`로 새 번호로 옮긴다(목록 출력의 version을 if_version으로).

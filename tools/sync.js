@@ -65,7 +65,7 @@ if (mode === 'pending') {
   const at = (tab, row) => { const t = tabs.find(x => x.name === tab); return t ? (t.rows[row - t.start] || []) : []; };
   for (const e of plan) {
     if (e.nothing) continue;
-    const hits = recs.filter(x => x.id === e.id || score(sig(x), e.sig) === 3), want = e.move || e.tab, h = hits.find(x => x.tab === want) || hits[0];
+    const hits = recs.filter(x => x.id === e.id || score(sig(x), e.sig) === 3), want = e.move || e.tab, h = hits.find(x => x.id === e.id && x.tab === want) || hits.find(x => x.id === e.id) || hits.find(x => x.tab === want) || hits[0]; // 같은 내용의 줄이 둘이면 번호가 같은 줄을 본다
     const okRow = !!h && h.tab === want && score(sig(h), e.sig) >= 2;
     const okP = okRow && e.add.every(n => String(h.r[P] || '').includes(n));
     const okMN = okRow && (!e.setN || String(h.r[N] || '').replace(/\D/g, '') === String(e.setN).replace(/\D/g, ''));
