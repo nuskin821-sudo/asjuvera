@@ -2,6 +2,11 @@
 
 업무판(https://claude.ai/artifact/XgGaMVtuRSbui5Q8zJ8GeL)에서 직원이 누른 작업·메모를 AS 시트(1vk--EPUrq19aVeRVmowSitoJblQE9d9Ys08pDTRl6xE)에 옮긴다.
 
+## 도는 시간과 보고 (대표 지시 11/26)
+- 평일 낮 12:05부터 저녁 6:05까지 **10분마다** 돈다(예약 6개: 매시 5·15·25·35·45·55분. 한 예약은 1시간 간격까지만 되므로 여섯 개로 나눴다).
+- **할 일만 하고 보고하지 않는다.** 대화에 결과를 적지 않고, 원장에도 회차마다 쓰지 않는다. 하루 합계는 저녁 갱신(17:13) 원장 한 줄에 같이 적는다.
+- **문제가 생겼을 때만** 대표님께 한 줄로 알린다. 같은 문제는 다시 알리지 않는다.
+
 ## 지키는 것
 - 직원이 쓰는 칸(A~O)은 고치지 않는다. 비어 있는 **출고일자(M)·송장번호(N)** 만 채운다.
 - 메모·작업 기록은 **P열 '업무판 메모'** 에만 쓴다(기존 글 뒤에 덧붙임).
@@ -33,7 +38,7 @@
    - 번호 붙이기: 탭마다 `update_values` 한 번, range와 values는 qfill.json 그대로(null 칸은 건너뛴다).
 7. 다시 읽기(3과 같음. 한두 칸만 썼으면 그 칸의 `P:Q`만 다시 읽어 번호와 글이 맞는지 봐도 된다) → `tools/syncplan.sh check <새 파일>` 이 전부 OK → `node tools/sync.js commit /home/user/as-data/sync/plan.json /home/user/as-data/sync/state.json`
 8. 상태 알리기: `tools/syncstatus.sh <쓴 줄 수>` → `ArtifactData get`(cases/_sync)로 version을 보고 `set`(file_path `/home/user/as-data/sync/_sync.json`, if_version). 업무판 위에 "시트 반영 시각 · 못 넣은 건 · 두 줄인 건"이 뜬다.
-9. 쓴 것이 있으면 원장에 한 줄(접수번호·줄 수만). 없으면 아무것도 남기지 않는다.
+9. 회차마다 보고하지 않는다(위 '도는 시간과 보고'). 쓴 줄 수는 `/home/user/as-data/sync/day.log`에 한 줄씩 덧붙여 두고 저녁 갱신 때 합쳐서 원장에 적는다.
 
 ## 매일 저녁 갱신(tools/daily.sh)과의 관계
 - 저녁 갱신 때도 시트를 `A:Q`로 읽는다. 업무판 번호는 Q열 번호를 그대로 쓴다(`tools/rows.js`).
