@@ -8,6 +8,7 @@ const g = (r, i) => (r && r[i] != null ? String(r[i]).trim() : '');
 const p2 = n => ('0' + n).slice(-2);
 const days = s => Math.round((new Date(now.toDateString()) - new Date(new Date(s.replace(' ', 'T')).toDateString())) / 864e5);
 const out = [], cnt = {};
+const seen = {};
 for (let i = 2; i < A.length; i++) {
   const r = A[i], x = B[i] || [];
   const order = g(r, 6); if (!order) continue;
@@ -45,6 +46,7 @@ for (let i = 2; i < A.length; i++) {
   }
   c.hist = [{ t: recv, who: '시트', x: '[현대홈쇼핑반품] ' + c.sheetProg + ' · 사유: ' + c.symptom }];
   const key = c.hsTodo || c.stage; cnt[key] = (cnt[key] || 0) + 1;
+  seen[c.id] = (seen[c.id] || 0) + 1; if (seen[c.id] > 1) c.id += '-' + seen[c.id]; // 같은 주문번호가 두 줄이면 둘째부터 -2, -3 (번호가 겹치면 한 건만 눌리고 다른 건은 안 바뀐다)
   out.push(c);
 }
 fs.writeFileSync(1, JSON.stringify(out));

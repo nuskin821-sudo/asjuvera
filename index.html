@@ -812,8 +812,10 @@ $('v-plan').innerHTML=`<div class="doc">
 /* ---------- 저장 (실제 운영) ---------- */
 /* 공유 저장 (클로드 업무판): 누른 내용을 판 저장소에 두고 모든 사람에게 실시간으로 보여 준다. 시트 반영은 AS 창이 한다. */
 let DB=null, ME=null; const dbBusy=new Map();
+/* 저장 이름: 저장소는 영문·숫자·몇몇 기호만 받는다. 접수번호에 한글이 있으면(예: …-문의) 저장이 거절되므로 바꿔서 쓴다. */
+const docId=id=>String(id).replace(/[^A-Za-z0-9_\-.:@+]/g,ch=>'~'+ch.codePointAt(0).toString(36)+'~');
 function dbSave(c){ if(!DB) return; if(dbBusy.get(c.id)){dbBusy.set(c.id,'again');return} dbBusy.set(c.id,'now');
-  DB.doc('cases/'+c.id).set({json:JSON.stringify(c),by:ME?ME.id:'',at:ts()}).then(()=>{const again=dbBusy.get(c.id)==='again';dbBusy.delete(c.id);if(again)dbSave(c)})
+  DB.doc('cases/'+docId(c.id)).set({json:JSON.stringify(c),by:ME?ME.id:'',at:ts()}).then(()=>{const again=dbBusy.get(c.id)==='again';dbBusy.delete(c.id);if(again)dbSave(c)})
    .catch(e=>{dbBusy.delete(c.id);toast(e&&e.code==='permission_denied'?'저장 권한이 없습니다. 대표님께 업무판 참여 권한을 요청해 주세요':'저장하지 못했습니다: '+(e&&e.code||e))}) }
 async function initShared(){
   if(LIVE||!window.claude||!window.claude.use) return;
@@ -824,7 +826,7 @@ async function initShared(){
   let timer=setTimeout(()=>toast('공유 저장소에 아직 연결되지 않았습니다. 잠시 뒤 다시 열어 주세요'),10000);
   DB.collection('cases').onSnapshot(sn=>{ if(!sn.metadata.fromCache) clearTimeout(timer);
     sn.docChanges().forEach(ch=>{ if(ch.type==='removed') return; const d=ch.doc.data(); if(ch.doc.id==='_sync'){try{SYNC=JSON.parse(d.sync)}catch(e){} return} if(!d||!d.json) return;
-      let c; try{c=C(JSON.parse(d.json))}catch(e){return} const i=cases.findIndex(x=>x.id===ch.doc.id); if(i>=0) cases[i]=c; else cases.push(c) });
+      let c; try{c=C(JSON.parse(d.json))}catch(e){return} const i=cases.findIndex(x=>x.id===c.id); if(i>=0) cases[i]=c; else cases.push(c) });
     const busy=document.activeElement&&$('detail').contains(document.activeElement)&&/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName);
     renderStrip();renderList(); if(!busy) renderDetail(); if(!$('v-boss').hidden)renderBoss(); if(!$('v-trk').hidden)renderTrk();
   },e=>{clearTimeout(timer);toast('공유 저장소 연결이 끊겼습니다. 다시 열어 주세요')});
