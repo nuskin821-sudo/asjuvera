@@ -56,10 +56,11 @@ if (mode === 'pending') {
   }
   plan.sort((x, y) => x.tab.localeCompare(y.tab) || y.row - x.row); // 같은 탭은 아래 줄부터(줄을 지워도 위 번호가 안 밀리게)
   // 번호 붙이기: 진행 중 탭의 줄, 그리고 이번에 쓰는 줄. 처리완료의 옛 줄은 건드리지 않는다.
-  const qfill = recs.filter(x => x.qid !== x.id && (!x.qraw || x.qid) && (x.tab !== '처리완료' || touched.has(x.tab + '|' + x.row)))  // Q칸에 직원이 다른 글을 적어 둔 줄은 건드리지 않는다
+  const qfill = recs.filter(x => x.qid !== x.id && (!x.qraw || x.qid || x.copied) && (x.tab !== '처리완료' || touched.has(x.tab + '|' + x.row) || x.copied))  // Q칸에 직원이 다른 글을 적어 둔 줄은 건드리지 않는다
    .map(x => ({ tab: x.tab, row: x.row, id: x.id, sig: sig(x) })).sort((x, y) => x.tab.localeCompare(y.tab) || x.row - y.row);
   const status = { skipped: skipped.map(s => ({ id: s.id, why: s.why })), dupes: dupes.map(d => ({ id: d.id, keep: d.keep.tab + ' ' + d.keep.row + '행', drop: d.drop.map(x => x.tab + ' ' + x.row + '행').join(', ') })) };
-  process.stdout.write(JSON.stringify({ since, plan, qfill, skipped, dupes, status }, null, 1));
+  const copied = recs.filter(x => x.copied).map(x => ({ tab: x.tab, row: x.row, id: x.id, was: x.copied, clearP: x.clearP })); // 복사된 줄: 번호를 제 것으로 바꾸고(qfill에 들어 있음), clearP면 딸려 온 메모를 비운다
+  process.stdout.write(JSON.stringify({ since, plan, qfill, copied, skipped, dupes, status }, null, 1));
 } else if (mode === 'check') {
   const [planFile, ...tabArgs] = a; const { plan, qfill } = JSON.parse(fs.readFileSync(planFile, 'utf8')); const tabs = loadTabs(tabArgs), { recs } = scan(tabs); let bad = 0;
   const at = (tab, row) => { const t = tabs.find(x => x.name === tab); return t ? (t.rows[row - t.start] || []) : []; };

@@ -36,6 +36,7 @@
      - 옮김: `copyPaste` as 그 줄(A:Q, endColumnIndex 17) → 수거완료 '옮김 행', PASTE_NORMAL → `deleteDimension` as 그 줄 → `appendDimension` as 1줄. 여러 줄이면 **아래 줄부터** 지운다(계획이 그 순서로 나온다).
      - sheetId: as 111783976 · 수거완료 1856335090 · 출고예정 870760180 · 유상AS입금대기 691211646 · 보류 220357409 · 처리완료 841485114
    - 번호 붙이기: 탭마다 `update_values` 한 번, range와 values는 qfill.json 그대로(null 칸은 건너뛴다).
+   - 복사된 줄(11/27): 직원이 줄을 복사해 새 고객으로 고쳐 쓰면 남의 번호·메모가 딸려 온다. 계획에 `복사된 줄 탭 N행: 번호 A → B`로 나온다. 번호는 번호 붙이기에 들어 있어 같이 고쳐지고, `딸려 온 메모 비움`이라고 나오면 그 P칸을 빈 값으로 쓴다(주인 줄에 같은 메모가 남아 있을 때만 그렇게 나온다). 옮김과 같은 회차면 줄 번호가 밀리기 전에(같은 묶음의 앞쪽에서) 쓴다.
 7. 다시 읽기(3과 같음. 한두 칸만 썼으면 그 칸의 `P:Q`만 다시 읽어 번호와 글이 맞는지 봐도 된다) → `tools/syncplan.sh check <새 파일>` 이 전부 OK → `node tools/sync.js commit /home/user/as-data/sync/plan.json /home/user/as-data/sync/state.json`
 8. 상태 알리기: `tools/syncstatus.sh <쓴 줄 수>` → `ArtifactData get`(cases/_sync)로 version을 보고 `set`(file_path `/home/user/as-data/sync/_sync.json`, if_version). 업무판 위에 "시트 반영 시각 · 못 넣은 건 · 두 줄인 건"이 뜬다.
 9. 회차마다 보고하지 않는다(위 '도는 시간과 보고'). 쓴 줄 수는 `/home/user/as-data/sync/day.log`에 한 줄씩 덧붙여 두고 저녁 갱신 때 합쳐서 원장에 적는다.

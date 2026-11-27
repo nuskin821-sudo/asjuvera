@@ -29,6 +29,7 @@ for i,e in enumerate(p['plan']):
     print('   P값:', json.dumps(e['p'],ensure_ascii=False))
 for s in p['skipped']: print('건너뜀',s['id'],s['why'],f"({s['events']}건)")
 for d in p['dupes']: print('중복 줄',d['id'],'쓰는 줄',d['keep'],'남은 줄',d['drop'])
+for c in p.get('copied',[]): print(f"복사된 줄 {c['tab']} {c['row']}행: 번호 {c['was']} → {c['id']} (번호 붙이기에 포함)" + (f" · 딸려 온 메모 비움: {c['tab']}!P{c['row']} 를 빈 값으로" if c.get('clearP') else ' · 메모는 그대로 둠'))
 # 번호 붙이기: 탭마다 update_values 한 번 (null은 건너뜀). 값은 파일로 남긴다.
 by=collections.defaultdict(list)
 for q in p['qfill']: by[q['tab']].append(q)

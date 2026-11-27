@@ -21,6 +21,20 @@ function scan(tabs) {
     const q = String(r[Q] || '').trim(), qid = IDRE.test(q) ? q : '';
     all.push({ tab: t.name, row: t.start + i, r, recv, name, product, qid, qraw: q, ident: qid || stableId(recv, name, product, null) });
   });
+  // 복사된 줄: 직원이 줄을 복사해 새 고객으로 고쳐 쓰면 Q열 번호(와 P열 메모)가 딸려 온다.
+  // 같은 번호가 여러 줄이고, 그 번호의 진짜 주인(내용으로 만든 번호가 Q와 같은 줄)이 있을 때, 주인과 접수일·이름·제품 중 둘 이상 다른 줄은 새 건으로 본다.
+  const sg = x => [x.recv, norm(x.name), norm(x.product)], byQ = {};
+  all.forEach(x => { if (x.qid) (byQ[x.qid] = byQ[x.qid] || []).push(x); });
+  for (const [qid, g] of Object.entries(byQ)) {
+    if (g.length < 2) continue;
+    const owner = g.find(x => stableId(x.recv, x.name, x.product, null) === qid.slice(0, 14)); if (!owner) continue;
+    const o = sg(owner), op = String(owner.r[Q - 1] || '').trim();
+    for (const x of g) {
+      if (x === owner) continue; const a = sg(x); if ((a[0] === o[0]) + (a[1] === o[1]) + (a[2] === o[2]) >= 2) continue;
+      const p = String(x.r[Q - 1] || '').trim();
+      x.copied = qid; x.clearP = !!p && op.startsWith(p); x.qid = ''; x.ident = stableId(x.recv, x.name, x.product, null); // 메모는 주인 줄에 똑같이 남아 있을 때만 비운다
+    }
+  }
   const groups = {}; all.forEach(x => (groups[x.ident] = groups[x.ident] || []).push(x));
   const recs = [], dupes = [];
   for (const [ident, g] of Object.entries(groups)) {
